@@ -6,6 +6,7 @@
 <title>Patrimonio · Dashboard</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -115,7 +116,7 @@ html,body{height:100%;background:var(--bg);color:var(--text);
 }
 
 /* ═══ KPI GRID ═══ */
-.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:26px}
 .kpi{
   background:var(--card);border-radius:var(--radius);
   border:1px solid var(--border);padding:18px 18px 16px;
@@ -253,17 +254,37 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
 }
 @media(max-width:768px){
   #sidebar{display:none}
-  #mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);padding:8px 4px 14px}
-  .mob-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:9px;font-weight:600}
+  #mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);padding:6px 4px 14px;flex-wrap:wrap}
+  .mob-item{flex:1;min-width:14%;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:9px;font-weight:600}
   .mob-item.active{color:var(--green)}
-  .mob-ico{font-size:17px}
-  #main{padding-bottom:72px}
+  .mob-ico{font-size:16px}
+  /* Mobile controls row at bottom */
+  #mob-controls{display:flex;align-items:center;justify-content:space-between;width:100%;padding:6px 12px 2px;border-top:1px solid var(--border);margin-top:4px}
+  .mob-theme-toggle{display:flex;background:var(--card2);border-radius:6px;padding:2px;gap:2px}
+  .mob-theme-btn{padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:600;color:var(--muted);border:none;background:none}
+  .mob-theme-btn.active{background:var(--card);color:var(--green)}
+  .mob-priv-btn{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:600;color:var(--muted);border:none;background:none;padding:4px 8px;border-radius:6px;border:1px solid var(--border)}
+  .mob-priv-btn.on{color:var(--green);border-color:var(--green);background:rgba(0,212,138,.08)}
+  #main{padding-bottom:100px}
+  /* Smaller KPIs on mobile */
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
-  .kpi-val{font-size:24px}
-  .kpi-badge{font-size:17px}
+  .kpi-val{font-size:20px}
+  .kpi-badge{font-size:15px;padding:3px 8px}
+  .kpi-lbl{font-size:10px}
+  .kpi-sub{font-size:11px}
+  /* Smaller acciones ticker cards */
+  .ticker-grid{grid-template-columns:repeat(2,1fr)}
+  .ticker-val{font-size:17px}
+  .ticker-sym{font-size:13px}
+  .ticker-metric-val{font-size:13px}
+  /* Smaller charts layouts */
   .g2,.g11{grid-template-columns:1fr}
-  .g3,.ticker-grid{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(2,1fr)}
   .g6{grid-template-columns:repeat(3,1fr)}
+  /* Smaller sec title */
+  .sec-title{font-size:16px}
+  /* Table horizontal scroll */
+  .tbl-wrap{font-size:11px}
 }
 @media(min-width:769px){#mob-nav{display:none}}
 </style>
@@ -306,6 +327,21 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
     🔒 <strong>Modo Privacidad</strong> · Importes en € ocultos · Variaciones % y rentabilidades siempre visibles
   </div>
 
+  <!-- Data refresh bar -->
+  <div id="data-bar" style="
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    padding:10px 24px;background:var(--card);border-bottom:1px solid var(--border);
+    font-size:12px;
+  ">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="color:var(--muted)">📊 Datos patrimonio:</span>
+      <span id="data-status" style="color:var(--muted)">Cargados desde datos embebidos (JUN'26)</span>
+    </div>
+    <button class="pbtn" id="btn-refresh-data" style="display:flex;align-items:center;gap:6px;font-size:12px">
+      ↻ Actualizar desde Google Drive
+    </button>
+  </div>
+
   <div id="content">
 
     <!-- RESUMEN -->
@@ -315,17 +351,7 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
         <div class="kpi">
           <div class="kpi-lbl">Patrimonio Neto</div>
           <div class="kpi-val pval" id="k-neto">—</div>
-          <div class="kpi-sub">Consolidado total</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-lbl">Total Activos</div>
-          <div class="kpi-val pval" id="k-activos">—</div>
-          <div class="kpi-sub">Bruto sin deudas</div>
-        </div>
-        <div class="kpi">
-          <div class="kpi-lbl">Deuda Hipoteca</div>
-          <div class="kpi-val pval" id="k-hip" style="color:var(--red)">—</div>
-          <div class="kpi-sub" id="k-hip-sub">Saldo pendiente</div>
+          <div class="kpi-sub pval" id="k-neto-sub">Consolidado total</div>
         </div>
         <div class="kpi">
           <div class="kpi-lbl">Variación mensual</div>
@@ -336,7 +362,15 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
           </div>
         </div>
         <div class="kpi">
-          <div class="kpi-lbl">Rentabilidad total</div>
+          <div class="kpi-lbl">Variación año en curso (YTD)</div>
+          <div id="k-ytd-badge" class="kpi-badge up phigh">—</div>
+          <div class="kpi-sub">
+            <span class="psub" id="k-ytd-eur"></span>
+            <span id="k-ytd-ref" style="color:var(--muted)"></span>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Rentabilidad total desde 2019</div>
           <div id="k-ret-badge" class="kpi-badge up phigh">—</div>
           <div class="kpi-sub psub" id="k-ret-sub">—</div>
         </div>
@@ -564,6 +598,13 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
   <div class="mob-item" data-sec="evolucion"><div class="mob-ico">↗</div>Evolución</div>
   <div class="mob-item" data-sec="pensiones"><div class="mob-ico">◫</div>Pensiones</div>
   <div class="mob-item" data-sec="cripto"><div class="mob-ico">₿</div>Cripto</div>
+  <div id="mob-controls">
+    <div class="mob-theme-toggle">
+      <button class="mob-theme-btn active" data-mob-theme="dark">🌙 Oscuro</button>
+      <button class="mob-theme-btn" data-mob-theme="light">☀️ Claro</button>
+    </div>
+    <button class="mob-priv-btn" id="mob-priv-btn">🔒 Privacidad</button>
+  </div>
 </div>
 
 <script>
@@ -577,32 +618,34 @@ const EMBEDDED_DATA = {"dates": ["ENE'19", "28 FEB'19", "31 MAR'19", "30 ABR'19"
 //  STOCK PORTFOLIO DATA (Acciones individuales)
 // ════════════════════════════════════════════════════
 const STOCK_PURCHASES = [
-  {ticker:'AAPL', name:'Apple Inc.', shares:168, priceUsd:128.78, date:'2020-08-24', fx:0.84524},
-  {ticker:'AMAT', name:'Applied Materials', shares:44, priceUsd:52.02, date:'2018-06-04', fx:0.85624},
-  {ticker:'PLTR', name:'Palantir Technologies', shares:65, priceUsd:28.00, date:'2021-02-19', fx:0.82686},
-  {ticker:'NET', name:'Cloudflare', shares:50, priceUsd:17.40, date:'2019-11-04', fx:0.90490},
-  {ticker:'V', name:'Visa Inc.', shares:68, priceUsd:324.12, date:'2025-11-18', fx:0.86520},
-  {ticker:'V', name:'Visa Inc.', shares:83, priceUsd:311.85, date:'2024-11-18', fx:0.94153},
-  {ticker:'V', name:'Visa Inc.', shares:94, priceUsd:294.56, date:'2023-11-20', fx:0.92430},
-  {ticker:'V', name:'Visa Inc.', shares:63, priceUsd:210.80, date:'2022-11-22', fx:0.98116},
-  {ticker:'V', name:'Visa Inc.', shares:70, priceUsd:200.86, date:'2021-11-19', fx:0.87596},
-  {ticker:'V', name:'Visa Inc.', shares:109, priceUsd:207.57, date:'2020-11-18', fx:0.84559},
-];
-const VUAA_PURCHASES = [
-  {shares:150, priceEur:114.515, date:'2026-01-12'},
-  {shares:237, priceEur:114.380, date:'2026-01-14'},
-  {shares:31,  priceEur:111.760, date:'2026-01-21'},
-  {shares:14,  priceEur:111.715, date:'2026-02-24'},
+  // Costes exactos en EUR de la tabla oficial (ya incluyen conversión USD/EUR a fecha de compra)
+  {ticker:'AAPL', name:'Apple',            isin:'US0378331005', shares:168, costEur:18485.84, date:'2020-08-24', dep:'Bankinter',     tit:'Gus/Silvia'},
+  {ticker:'AMAT', name:'Applied Materials', isin:'US038222105',  shares:44,  costEur:1985.68,  date:'2018-06-04', dep:'ING Direct',    tit:'Gus'},
+  {ticker:'NET',  name:'Cloudflare',        isin:'US18915M1071', shares:50,  costEur:791.00,   date:'2019-04-11', dep:'Bankinter',     tit:'Gus/Silvia'},
+  {ticker:'PLTR', name:'Palantir',          isin:'US69608A1088', shares:65,  costEur:1528.03,  date:'2021-02-19', dep:'Renta4',        tit:'Gus/Silvia'},
+  {ticker:'V',    name:'Visa',              isin:'US92826C8394', shares:109, costEur:19067.19, date:'2020-11-19', dep:'Merrill Lynch', tit:'Gus'},
+  {ticker:'V',    name:'Visa',              isin:'US92826C8394', shares:70,  costEur:12451.47, date:'2021-11-19', dep:'Merrill Lynch', tit:'Gus'},
+  {ticker:'V',    name:'Visa',              isin:'US92826C8394', shares:63,  costEur:12838.75, date:'2022-11-19', dep:'Merrill Lynch', tit:'Gus'},
+  {ticker:'V',    name:'Visa',              isin:'US92826C8394', shares:94,  costEur:21509.85, date:'2023-12-19', dep:'Merrill Lynch', tit:'Gus'},
+  {ticker:'V',    name:'Visa',              isin:'US92826C8394', shares:83,  costEur:24469.23, date:'2024-12-19', dep:'Merrill Lynch', tit:'Gus'},
+  {ticker:'V',    name:'Visa',              isin:'US92826C8394', shares:68,  costEur:19028.02, date:'2025-11-19', dep:'Merrill Lynch', tit:'Gus'},
+  {ticker:'VUAA', name:'Vanguard S&P 500',  isin:'IE00BFMXXD54', shares:150, costEur:17189.93, date:'2026-01-12', dep:'SelfBank',      tit:'Gus/Silvia'},
+  {ticker:'VUAA', name:'Vanguard S&P 500',  isin:'IE00BFMXXD54', shares:237, costEur:27135.17, date:'2026-01-14', dep:'SelfBank',      tit:'Gus/Silvia'},
+  {ticker:'VUAA', name:'Vanguard S&P 500',  isin:'IE00BFMXXD54', shares:31,  costEur:3474.72,  date:'2026-01-21', dep:'SelfBank',      tit:'Gus/Silvia'},
+  {ticker:'VUAA', name:'Vanguard S&P 500',  isin:'IE00BFMXXD54', shares:14,  costEur:1574.01,  date:'2026-02-24', dep:'SelfBank',      tit:'Gus/Silvia'},
+  {ticker:'WBTC', name:'WisdomTree Bitcoin', isin:'GB00BJYDH287', shares:443, costEur:10023.32, date:'2025-02-10', dep:'SelfBank',      tit:'Gus/Silvia'},
+  {ticker:'WBTC', name:'WisdomTree Bitcoin', isin:'GB00BJYDH287', shares:210, costEur:4814.97,  date:'2025-10-14', dep:'SelfBank',      tit:'Gus/Silvia'},
 ];
 const STOCK_CURRENT = {
-  AAPL: {price:281.74, prevClose:283.78, currency:'USD', name:'Apple Inc.'},
-  AMAT: {price:694.64, prevClose:670.00, currency:'USD', name:'Applied Materials'},
-  PLTR: {price:115.70, prevClose:112.93, currency:'USD', name:'Palantir Technologies'},
-  NET:  {price:245.54, prevClose:240.01, currency:'USD', name:'Cloudflare'},
-  V:    {price:341.74, prevClose:341.65, currency:'USD', name:'Visa Inc.'},
-  VUAA: {price:125.20, prevClose:125.05, currency:'EUR', name:'Vanguard S&P 500 UCITS ETF'},
+  AAPL: {price:281.74,  prevClose:283.78, currency:'USD', name:'Apple Inc.'},
+  AMAT: {price:694.64,  prevClose:670.00, currency:'USD', name:'Applied Materials'},
+  PLTR: {price:115.70,  prevClose:112.93, currency:'USD', name:'Palantir Technologies'},
+  NET:  {price:245.54,  prevClose:240.01, currency:'USD', name:'Cloudflare'},
+  V:    {price:341.74,  prevClose:341.65, currency:'USD', name:'Visa Inc.'},
+  VUAA: {price:125.20,  prevClose:125.05, currency:'EUR', name:'Vanguard S&P 500 UCITS ETF'},
+  WBTC: {price:12.19,   prevClose:12.02,  currency:'EUR', name:'WisdomTree Physical Bitcoin (WBTC.PA)'},
 };
-const USD_EUR_TODAY = 0.8530; // tipo de cambio spot, fallback si no hay conexión
+const USD_EUR_TODAY = 0.87765; // BCE tasa oficial 30 jun 2026: EUR/USD=1.1394
 
 // ════════════════════════════════════════════════════
 //  FINNHUB LIVE PRICE FETCH
@@ -610,7 +653,8 @@ const USD_EUR_TODAY = 0.8530; // tipo de cambio spot, fallback si no hay conexi�
 const FINNHUB_API_KEY = 'd91v4kpr01qg69gs6p7gd91v4kpr01qg69gs6p80';
 const FINNHUB_SYMBOLS = {
   AAPL: 'AAPL', AMAT: 'AMAT', PLTR: 'PLTR', NET: 'NET', V: 'V',
-  VUAA: 'VUAA.DE' // Vanguard S&P 500 UCITS ETF, XETRA listing, EUR-denominated
+  VUAA: 'VUAA.DE', // Vanguard S&P 500 UCITS ETF, XETRA, EUR
+  WBTC: 'WBTC.PA', // WisdomTree Physical Bitcoin, Euronext Paris, EUR
 };
 // USD/EUR forex pair on Finnhub (Quandl-style OANDA symbol)
 const FINNHUB_FX_SYMBOL = 'OANDA:USD_EUR';
@@ -828,6 +872,79 @@ function loadEmbedded(){
 }
 
 // ════════════════════════════════════════════════════
+//  GOOGLE DRIVE REFRESH
+// ════════════════════════════════════════════════════
+const DRIVE_FILE_ID = '1pjuIjWw_2KEzvsTICb3tUk44-1sqgzBfHCZ2ChB23_4';
+const DRIVE_EXPORT_URL = `https://docs.google.com/spreadsheets/d/${DRIVE_FILE_ID}/export?format=xlsx&id=${DRIVE_FILE_ID}`;
+
+async function refreshFromDrive(){
+  const statusEl = $('data-status');
+  const btn = $('btn-refresh-data');
+  btn.disabled = true;
+  btn.textContent = '⏳ Descargando...';
+  statusEl.style.color = 'var(--accent)';
+  statusEl.textContent = 'Conectando con Google Drive...';
+
+  try {
+    const resp = await fetch(DRIVE_EXPORT_URL);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status} — verifica que el archivo es público`);
+
+    statusEl.textContent = 'Procesando Excel...';
+    const arrayBuf = await resp.arrayBuffer();
+
+    const wb = XLSX.read(arrayBuf, {type:'array'});
+    const sn = wb.SheetNames.find(n=>n.toUpperCase().includes('TOTAL ACTIVOS'));
+    if(!sn) throw new Error('Pestaña "TOTAL ACTIVOS" no encontrada');
+
+    const ws = wb.Sheets[sn];
+    const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    const hdr = raw[3];
+    if(!hdr || hdr[0] !== 'Tipo activo') throw new Error('Fila 4 inesperada (col A debe ser "Tipo activo")');
+
+    const dates = [];
+    for(let c=3; c<hdr.length; c+=2){
+      const lbl = hdr[c];
+      if(lbl && lbl !== '%' && typeof lbl === 'string') dates.push({col:c, label:lbl});
+    }
+    if(!dates.length) throw new Error('No se encontraron columnas de fecha en fila 4');
+
+    const assets = [];
+    for(let r=4; r<=40; r++){
+      const row = raw[r];
+      if(!row || (!row[0]&&!row[1]&&!row[2])) continue;
+      assets.push({
+        tipo: row[0], dep: row[1], tit: row[2],
+        series: dates.map(({col})=>{ const v=row[col]; return (v&&v!==0)?v:null; })
+      });
+    }
+
+    const rA=raw[41]||[], rH=raw[43]||[], rN=raw[46]||[];
+
+    // Update EMBEDDED_DATA in memory — build() reads from it
+    EMBEDDED_DATA.dates         = dates.map(d=>d.label);
+    EMBEDDED_DATA.assets        = assets;
+    EMBEDDED_DATA.seriesNeto    = dates.map(({col})=>rN[col]||null);
+    EMBEDDED_DATA.seriesActivos = dates.map(({col})=>rA[col]||null);
+    EMBEDDED_DATA.seriesHip     = dates.map(({col})=>rH[col]||null);
+
+    build(); // full rebuild with new data
+
+    const lastDate = EMBEDDED_DATA.dates[EMBEDDED_DATA.dates.length-1];
+    const now = new Date().toLocaleString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    statusEl.textContent = `✓ Actualizado · ${EMBEDDED_DATA.dates.length} períodos hasta ${lastDate} · ${now}`;
+    statusEl.style.color = 'var(--green)';
+
+  } catch(e) {
+    statusEl.textContent = `✗ ${e.message}`;
+    statusEl.style.color = 'var(--red)';
+    console.error('Drive refresh failed:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Actualizar desde Google Drive';
+  }
+}
+
+// ════════════════════════════════════════════════════
 //  BUILD DASHBOARD
 // ════════════════════════════════════════════════════
 function build(){
@@ -839,15 +956,18 @@ function build(){
   const nPrev=ni>0?DATA.sN[ni-1].val:null;
   const nFirst=DATA.sN.find(x=>x.val&&x.val>0);
   const aNow=DATA.sA[ni]?.val||nNow;
-  const hNow=DATA.sH[ni]?.val||0;
 
-  const dMes=nPrev?(nNow-nPrev)/Math.abs(nPrev):null;
-  const dTot=nFirst?(nNow-nFirst.val)/Math.abs(nFirst.val):null;
+  // YTD: find 1 ENE'26 (start of current calendar year)
+  const ytdEntry = DATA.sN.slice().reverse().find(x=>x.val && x.val>0 &&
+    x.label && (x.label.includes("ENE'26") || x.label.includes('ENE\'26')));
+  const nYtd = ytdEntry?.val || DATA.sN[0]?.val;
 
-  $('k-neto').textContent=eur(nNow);
-  $('k-activos').textContent=eur(aNow);
-  $('k-hip').textContent=hNow?eur(Math.abs(hNow)):'0 €';
-  $('k-hip-sub').textContent = hNow ? 'Saldo pendiente' : 'Hipoteca cancelada';
+  const dMes = nPrev?(nNow-nPrev)/Math.abs(nPrev):null;
+  const dYtd = nYtd?(nNow-nYtd)/Math.abs(nYtd):null;
+  const dTot = nFirst?(nNow-nFirst.val)/Math.abs(nFirst.val):null;
+
+  $('k-neto').textContent = eur(nNow);
+  $('k-neto-sub').textContent = eur(aNow) + ' en activos';
 
   const dm=delta(dMes);
   const kb=$('k-mes-badge');
@@ -855,10 +975,16 @@ function build(){
   if(nPrev){ const d=nNow-nPrev; $('k-mes-eur').textContent=(d>=0?'+':'')+eur(d)+' '; }
   $('k-mes-ref').textContent=nPrev?'vs '+DATA.sN[ni-1].label:'';
 
+  const dy=delta(dYtd);
+  const kb3=$('k-ytd-badge');
+  kb3.textContent=dy.txt; kb3.className='kpi-badge phigh '+(dy.cls||'up');
+  if(nYtd){ const d=nNow-nYtd; $('k-ytd-eur').textContent=(d>=0?'+':'')+eur(d)+' '; }
+  $('k-ytd-ref').textContent=ytdEntry?'desde '+ytdEntry.label:'';
+
   const dt=delta(dTot);
   const kb2=$('k-ret-badge');
   kb2.textContent=dt.txt; kb2.className='kpi-badge phigh '+(dt.cls||'up');
-  $('k-ret-sub').textContent=nFirst?'desde '+nFirst.label:'';
+  $('k-ret-sub').textContent=nFirst?'desde '+nFirst.label+' → '+eur(nNow-nFirst.val):'';
 
   const ct={};
   for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
@@ -1326,32 +1452,24 @@ function drawSection(sec, data, ni){
 //  ACCIONES SECTION
 // ════════════════════════════════════════════════════
 function buildAcciones(){
-  // Compute per-purchase metrics
   const liveRate = window.LIVE_USD_EUR || USD_EUR_TODAY;
-  const lots = STOCK_PURCHASES.map(p=>{
+
+  // All lots now have costEur directly — no need for priceUsd*fx conversion
+  const allLots = STOCK_PURCHASES.map(p=>{
     const cur = STOCK_CURRENT[p.ticker];
-    const costEur = p.shares * p.priceUsd * p.fx;
-    const curValueUsd = p.shares * cur.price;
-    const curValueEur = curValueUsd * liveRate;
-    const gainEur = curValueEur - costEur;
-    const gainPct = gainEur / costEur;
-    return {...p, costEur, curValueEur, gainEur, gainPct, name:cur.name};
+    // Current value in EUR: USD stocks * liveRate, EUR stocks use price directly
+    const curValueEur = cur.currency==='EUR'
+      ? p.shares * cur.price
+      : p.shares * cur.price * liveRate;
+    const gainEur = curValueEur - p.costEur;
+    const gainPct = gainEur / p.costEur;
+    return {...p, curValueEur, gainEur, gainPct};
   });
-  // VUAA lots (EUR-denominated)
-  const vuaaLots = VUAA_PURCHASES.map(p=>{
-    const costEur = p.shares * p.priceEur;
-    const curValueEur = p.shares * STOCK_CURRENT.VUAA.price;
-    const gainEur = curValueEur - costEur;
-    const gainPct = gainEur / costEur;
-    return {ticker:'VUAA', name:STOCK_CURRENT.VUAA.name, shares:p.shares, priceUsd:p.priceEur,
-      date:p.date, costEur, curValueEur, gainEur, gainPct, isEur:true};
-  });
-  const allLots = [...lots, ...vuaaLots];
 
   // Consolidate by ticker
   const byTicker = {};
   for(const l of allLots){
-    if(!byTicker[l.ticker]) byTicker[l.ticker] = {ticker:l.ticker, name:l.name, shares:0, costEur:0, curValueEur:0, isEur:l.isEur};
+    if(!byTicker[l.ticker]) byTicker[l.ticker]={ticker:l.ticker,name:l.name,isin:l.isin,shares:0,costEur:0,curValueEur:0,dep:l.dep,tit:l.tit};
     byTicker[l.ticker].shares += l.shares;
     byTicker[l.ticker].costEur += l.costEur;
     byTicker[l.ticker].curValueEur += l.curValueEur;
@@ -1359,52 +1477,50 @@ function buildAcciones(){
   const tickers = Object.values(byTicker);
 
   // Totals
-  const totalCost = allLots.reduce((s,l)=>s+l.costEur,0);
+  const totalCost  = allLots.reduce((s,l)=>s+l.costEur,0);
   const totalValue = allLots.reduce((s,l)=>s+l.curValueEur,0);
-  const totalGain = totalValue - totalCost;
+  const totalGain  = totalValue - totalCost;
   const totalGainPct = totalGain/totalCost;
 
-  // Daily change (weighted by current value using prevClose)
+  // Daily change (ratio prevClose/price applied to current EUR value)
   let prevValueTotal = 0;
   for(const t of tickers){
     const cur = STOCK_CURRENT[t.ticker];
-    const dailyFactor = cur.prevClose / cur.price;
-    prevValueTotal += t.curValueEur * dailyFactor;
+    prevValueTotal += t.curValueEur * (cur.prevClose / cur.price);
   }
   const dailyChangeEur = totalValue - prevValueTotal;
-  const dailyChangePct = dailyChangeEur/prevValueTotal;
+  const dailyChangePct = dailyChangeEur / prevValueTotal;
 
   // KPIs
   $('acc-total-val').textContent = eur(totalValue);
+  $('acc-total-val').nextElementSibling.textContent = `7 valores · ${allLots.length} posiciones`;
 
   const dailyD = delta(dailyChangePct);
   const dailyEurEl = $('acc-daily-eur');
   dailyEurEl.textContent = (dailyChangeEur>=0?'+':'')+eur(dailyChangeEur);
   dailyEurEl.className = 'kpi-val pval '+(dailyD.cls||'up');
-  const dailyBadgeEl = $('acc-daily-badge');
-  dailyBadgeEl.textContent = dailyD.txt;
-  dailyBadgeEl.className = 'phigh '+(dailyD.cls||'up');
+  $('acc-daily-badge').textContent = dailyD.txt;
+  $('acc-daily-badge').className = 'phigh '+(dailyD.cls||'up');
 
   const histD = delta(totalGainPct);
   const histEurEl = $('acc-hist-eur');
   histEurEl.textContent = (totalGain>=0?'+':'')+eur(totalGain);
   histEurEl.className = 'kpi-val pval '+(histD.cls||'up');
-  const histBadgeEl = $('acc-hist-badge');
-  histBadgeEl.textContent = histD.txt;
-  histBadgeEl.className = 'phigh '+(histD.cls||'up');
+  $('acc-hist-badge').textContent = histD.txt;
+  $('acc-hist-badge').className = 'phigh '+(histD.cls||'up');
 
   // Ticker cards
   const tg = $('ticker-grid'); tg.innerHTML='';
   tickers.sort((a,b)=>b.curValueEur-a.curValueEur);
   for(const t of tickers){
     const cur = STOCK_CURRENT[t.ticker];
-    const dailyFactor = cur.prevClose / cur.price;
-    const prevVal = t.curValueEur * dailyFactor;
-    const dDaily = (t.curValueEur - prevVal)/prevVal;
-    const dHist = (t.curValueEur - t.costEur)/t.costEur;
-    const ddD = delta(dDaily);
-    const dhD = delta(dHist);
-    const priceDisplay = t.isEur ? cur.price.toFixed(2)+' €' : '$'+cur.price.toFixed(2);
+    const prevVal = t.curValueEur * (cur.prevClose/cur.price);
+    const dDaily = (t.curValueEur-prevVal)/prevVal;
+    const dHist  = (t.curValueEur-t.costEur)/t.costEur;
+    const ddD = delta(dDaily); const dhD = delta(dHist);
+    const isEur = cur.currency==='EUR';
+    const priceDisplay = isEur ? cur.price.toFixed(2)+' €' : '$'+cur.price.toFixed(2);
+    const gainAbs = t.curValueEur - t.costEur;
     tg.innerHTML += `
       <div class="ticker-card">
         <div class="ticker-top">
@@ -1413,12 +1529,12 @@ function buildAcciones(){
             <div class="ticker-name">${t.name}</div>
           </div>
           <div style="text-align:right">
-            <div class="mono" style="font-size:12px;color:var(--muted)">${priceDisplay}</div>
+            <div class="mono" style="font-size:13px;color:var(--muted)">${priceDisplay}</div>
             <div class="phigh ${ddD.cls}" style="font-size:15px;font-weight:800;margin-top:3px">${ddD.txt}</div>
           </div>
         </div>
         <div class="ticker-val pval">${eur(t.curValueEur)}</div>
-        <div class="det-sub" style="margin-top:2px">${t.shares} acciones</div>
+        <div class="det-sub pval" style="margin-top:2px">${t.shares} acciones · coste ${eur(t.costEur)}</div>
         <div class="ticker-row">
           <div class="ticker-metric">
             <div class="ticker-metric-lbl">Ganancia hoy</div>
@@ -1427,7 +1543,7 @@ function buildAcciones(){
           <div class="ticker-metric" style="text-align:right">
             <div class="ticker-metric-lbl">Ganancia histórica</div>
             <div class="ticker-metric-val phigh ${dhD.cls}">${dhD.txt}</div>
-            <div class="ticker-metric-val ${dhD.cls}" style="font-size:12px;margin-top:2px">${(t.curValueEur-t.costEur>=0?'+':'')}${eur(t.curValueEur-t.costEur)}</div>
+            <div class="ticker-metric-val pval ${dhD.cls}" style="font-size:12px;margin-top:2px">${(gainAbs>=0?'+':'')}${eur(gainAbs)}</div>
           </div>
         </div>
       </div>`;
@@ -1435,15 +1551,34 @@ function buildAcciones(){
 
   // Lots table
   const tb = $('tb-acciones'); tb.innerHTML='';
-  allLots.sort((a,b)=> new Date(b.date) - new Date(a.date));
-  for(const l of allLots){
+  const sortedLots = [...allLots].sort((a,b)=>a.ticker.localeCompare(b.ticker)||new Date(a.date)-new Date(b.date));
+  let lastTicker = null;
+  for(const l of sortedLots){
+    const cur = STOCK_CURRENT[l.ticker];
     const dG = delta(l.gainPct);
-    const priceTxt = l.isEur ? l.priceUsd.toFixed(3)+' €' : '$'+l.priceUsd.toFixed(2);
+    const isEur = cur.currency==='EUR';
+    const costPerShare = (l.costEur/l.shares).toFixed(2);
+    const priceTxt = isEur ? costPerShare+'€' : costPerShare+'€ (≈$'+(l.costEur/l.shares/USD_EUR_TODAY).toFixed(2)+')';
+    if(l.ticker !== lastTicker){
+      const tot = byTicker[l.ticker];
+      const totD = delta((tot.curValueEur-tot.costEur)/tot.costEur);
+      tb.innerHTML += `<tr class="sub-row">
+        <td><strong>${l.ticker}</strong> — ${l.name}</td>
+        <td>${l.isin}</td>
+        <td class="mono" style="text-align:right">${tot.shares}</td>
+        <td></td>
+        <td class="mono pval" style="text-align:right">${eur(tot.costEur)}</td>
+        <td class="mono pval" style="text-align:right">${eur(tot.curValueEur)}</td>
+        <td class="mono pval ${totD.cls}" style="text-align:right">${(tot.curValueEur-tot.costEur>=0?'+':'')}${eur(tot.curValueEur-tot.costEur)}</td>
+        <td class="mono phigh ${totD.cls}" style="text-align:right">${totD.txt}</td>
+      </tr>`;
+      lastTicker = l.ticker;
+    }
     tb.innerHTML += `<tr>
-      <td><span class="badge b-a">${l.ticker}</span></td>
-      <td style="color:var(--text2)">${formatDateEs(l.date)}</td>
+      <td style="color:var(--muted);padding-left:24px">Lote ${formatDateEs(l.date)}</td>
+      <td style="color:var(--muted);font-size:11px">${l.dep} · ${l.tit}</td>
       <td class="mono" style="text-align:right">${l.shares}</td>
-      <td class="mono" style="text-align:right;color:var(--text2)">${priceTxt}</td>
+      <td class="mono pval" style="text-align:right;color:var(--text2)">${priceTxt}</td>
       <td class="mono pval" style="text-align:right">${eur(l.costEur)}</td>
       <td class="mono pval" style="text-align:right">${eur(l.curValueEur)}</td>
       <td class="mono pval dcell ${dG.cls}" style="text-align:right">${(l.gainEur>=0?'+':'')}${eur(l.gainEur)}</td>
@@ -1451,6 +1586,7 @@ function buildAcciones(){
     </tr>`;
   }
 }
+
 function formatDateEs(iso){
   const [y,m,d] = iso.split('-');
   const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
@@ -1488,6 +1624,9 @@ function applyTheme(){
   document.body.classList.toggle('theme-light', theme==='light');
   document.querySelectorAll('.theme-btn').forEach(b=>{
     b.classList.toggle('active', b.dataset.theme===theme);
+  });
+  document.querySelectorAll('.mob-theme-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.mobTheme===theme);
   });
   if(!DATA) return;
   // Rebuild all charts with new theme colors
@@ -1539,6 +1678,35 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(statusEl){ statusEl.textContent = '✗ Error al actualizar · reintenta'; statusEl.style.color = 'var(--red)'; }
     });
   });
+
+  // Drive data refresh
+  $('btn-refresh-data').addEventListener('click', ()=>{
+    refreshFromDrive().catch(e=>{
+      console.error('Refresh error:', e);
+      $('data-status').textContent = `✗ Error inesperado: ${e.message}`;
+      $('data-status').style.color = 'var(--red)';
+    });
+  });
+
+  // Mobile theme buttons (mirror sidebar)
+  document.querySelectorAll('.mob-theme-btn[data-mob-theme]').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      theme = btn.dataset.mobTheme;
+      localStorage.setItem('theme', theme);
+      applyTheme();
+      document.querySelectorAll('.mob-theme-btn').forEach(b=>b.classList.toggle('active', b.dataset.mobTheme===theme));
+    });
+  });
+  // Mobile privacy button
+  const mobPrivBtn = $('mob-priv-btn');
+  if(mobPrivBtn) mobPrivBtn.addEventListener('click',()=>{
+    privacy=!privacy;
+    localStorage.setItem('priv',privacy?'1':'0');
+    applyPrivacy();
+    mobPrivBtn.classList.toggle('on', privacy);
+    mobPrivBtn.textContent = privacy ? '🔒 Oculto' : '🔒 Privacidad';
+  });
+  if(mobPrivBtn){ mobPrivBtn.classList.toggle('on',privacy); mobPrivBtn.textContent=privacy?'🔒 Oculto':'🔒 Privacidad'; }
 
   $('priv-toggle').addEventListener('click',()=>{
     privacy=!privacy;
