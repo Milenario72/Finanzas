@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Patrimonio · Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ═══ THEME TOKENS ═══ */
+:root{
+  --bg:#0D0F14; --card:#161A24; --card2:#1C2130;
+  --green:#00D48A; --red:#FF5C5C; --amber:#F59E0B;
+  --text:#E8EBF0; --text2:#B0B8C8; --muted:#6B7280;
+  --border:#232840; --border2:#2D3555;
+  --sidebar-w:228px; --accent:#3B82F6;
+  --radius:12px; --radius-sm:8px;
+  --grid-line: rgba(255,255,255,0.04);
+  --grid-line2: rgba(255,255,255,0.05);
+  --tooltip-bg:#1C2130; --tooltip-border:#2D3555;
+  --shadow: none;
+}
+body.theme-light{
+  --bg:#F4F6FA; --card:#FFFFFF; --card2:#EEF1F7;
+  --green:#00A36C; --red:#E0392E; --amber:#C77700;
+  --text:#1A1D29; --text2:#3F4658; --muted:#6B7280;
+  --border:#E2E6F0; --border2:#D2D8E8;
+  --accent:#2563EB;
+  --grid-line: rgba(0,0,0,0.045);
+  --grid-line2: rgba(0,0,0,0.06);
+  --tooltip-bg:#FFFFFF; --tooltip-border:#D2D8E8;
+  --shadow: 0 1px 3px rgba(20,25,40,.06);
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;
+  transition:background .25s,color .25s}
+#app{display:flex;height:100vh;overflow:hidden}
+
+/* ═══ SIDEBAR ═══ */
+#sidebar{
+  width:var(--sidebar-w);min-width:var(--sidebar-w);
+  background:var(--card);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;z-index:20;transition:background .25s,border-color .25s;
+}
+.sidebar-head{
+  display:flex;align-items:center;gap:12px;
+  padding:22px 20px 20px;border-bottom:1px solid var(--border);
+}
+.avatar{
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--green) 0%,#0099FF 100%);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:16px;color:#fff;letter-spacing:-.5px;
+}
+.sidebar-name{font-weight:700;font-size:14px;color:var(--text)}
+.sidebar-sub{font-size:11px;color:var(--muted);margin-top:1px}
+.nav-section-label{
+  font-size:10px;font-weight:600;letter-spacing:.8px;
+  color:var(--muted);text-transform:uppercase;
+  padding:20px 20px 6px;
+}
+.nav-item{
+  display:flex;align-items:center;gap:11px;
+  padding:9px 20px;cursor:pointer;
+  color:var(--muted);font-size:13px;font-weight:500;
+  border-left:3px solid transparent;transition:all .15s;
+}
+.nav-item:hover{color:var(--text2);background:rgba(120,130,160,.07)}
+.nav-item.active{color:var(--green);border-left-color:var(--green);background:rgba(0,212,138,.08)}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;opacity:.85}
+.sidebar-foot{padding:14px 20px 18px;border-top:1px solid var(--border);margin-top:auto;display:flex;flex-direction:column;gap:14px}
+.priv-toggle{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:2px 0}
+.priv-label{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:500;color:var(--muted)}
+.sw{width:38px;height:21px;background:var(--border2);border-radius:11px;position:relative;transition:background .2s;flex-shrink:0}
+.sw.on{background:var(--green)}
+.sw::after{content:'';position:absolute;top:2.5px;left:2.5px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw.on::after{transform:translateX(17px)}
+
+/* Theme toggle (segmented control) */
+.theme-toggle{display:flex;background:var(--card2);border-radius:8px;padding:3px;gap:2px}
+.theme-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:6px 4px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;color:var(--muted);transition:all .15s;border:none;background:none}
+.theme-btn.active{background:var(--card);color:var(--green);box-shadow:var(--shadow)}
+
+/* ═══ MAIN ═══ */
+#main{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+
+/* ═══ BANNER ═══ */
+#priv-banner{
+  display:none;align-items:center;gap:10px;
+  background:rgba(0,212,138,.08);border-bottom:1px solid rgba(0,212,138,.2);
+  padding:9px 28px;font-size:12px;color:var(--green);
+}
+#priv-banner.show{display:flex}
+#priv-banner strong{font-weight:700}
+
+/* ═══ CONTENT ═══ */
+#content{padding:28px;flex:1}
+.section{display:none}
+.section.active{display:block}
+.sec-title{font-size:20px;font-weight:800;margin-bottom:22px;letter-spacing:-.3px}
+.sec-sub{font-size:12.5px;color:var(--muted);margin-top:-16px;margin-bottom:22px}
+
+/* ═══ CARD ═══ */
+.card{
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);padding:22px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow);transition:background .25s,border-color .25s;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--green),transparent 70%);
+}
+
+/* ═══ KPI GRID ═══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:26px}
+.kpi{
+  background:var(--card);border-radius:var(--radius);
+  border:1px solid var(--border);padding:18px 18px 16px;
+  position:relative;overflow:hidden;box-shadow:var(--shadow);transition:background .25s,border-color .25s;
+}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent 70%)}
+.kpi-lbl{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:11px}
+.kpi-val{font-family:'SF Mono','Courier New',monospace;font-variant-numeric:tabular-nums;font-size:30px;font-weight:800;line-height:1.18;letter-spacing:-.3px}
+.kpi-sub{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+.kpi-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:8px;font-size:20px;font-weight:800;
+  margin-top:6px;letter-spacing:-.2px;
+}
+.kpi-badge.up{background:rgba(0,212,138,.12);color:var(--green)}
+.kpi-badge.down{background:rgba(255,92,92,.12);color:var(--red)}
+
+/* ═══ CHART CARD ═══ */
+.cc{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:22px;position:relative;overflow:hidden;box-shadow:var(--shadow);transition:background .25s,border-color .25s}
+.cc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent 70%)}
+.cc-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:8px}
+.cc-title{font-size:15px;font-weight:700;color:var(--text)}
+.cc-sub{font-size:11.5px;color:var(--muted);margin-top:2px}
+.chart-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+
+/* ═══ BUTTONS ═══ */
+.pbtn{padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);transition:all .15s}
+.pbtn.active,.pbtn:hover{background:rgba(0,212,138,.12);border-color:var(--green);color:var(--green)}
+.tbtn{padding:5px 12px;border-radius:6px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);transition:all .15s}
+.tbtn.active{background:rgba(59,130,246,.12);border-color:var(--accent);color:var(--accent)}
+
+/* ═══ GRID LAYOUTS ═══ */
+.g2{display:grid;grid-template-columns:2fr 1fr;gap:18px;margin-bottom:22px}
+.g11{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:22px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;margin-bottom:22px}
+
+/* ═══ DONUT ═══ */
+.donut-wrap{display:flex;flex-direction:column;gap:14px}
+.donut-leg{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.leg-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.leg-l{display:flex;align-items:center;gap:9px}
+.leg-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.leg-name{font-size:12.5px;font-weight:500;color:var(--text2)}
+.leg-r{text-align:right}
+.leg-eur{font-family:'SF Mono','Courier New',monospace;font-size:15.5px;font-variant-numeric:tabular-nums;color:var(--text);font-weight:700}
+.leg-pct{font-size:13.5px;color:var(--muted);font-weight:600}
+
+/* ═══ SPARK GRID ═══ */
+.spark-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.spark-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent 70%)}
+.spark-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px}
+.spark-cat{font-size:11.5px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.spark-eur{font-family:'SF Mono','Courier New',monospace;font-size:21px;font-weight:800;color:var(--text);letter-spacing:-.2px}
+.spark-badge{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:5px 11px;border-radius:8px;font-size:17px;font-weight:800;flex-shrink:0;
+}
+.spark-badge.up{background:rgba(0,212,138,.12);color:var(--green)}
+.spark-badge.down{background:rgba(255,92,92,.12);color:var(--red)}
+.spark-badge.neutral{background:rgba(107,114,128,.1);color:var(--muted)}
+
+/* ═══ TABLE ═══ */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+thead th{
+  text-align:left;padding:11px 14px;
+  font-size:11px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.4px;
+  border-bottom:1px solid var(--border2);cursor:pointer;
+  user-select:none;white-space:nowrap;transition:color .1s;
+}
+thead th:hover{color:var(--text2)}
+tbody tr{border-bottom:1px solid var(--grid-line2);transition:background .1s}
+tbody tr:hover{background:rgba(120,130,160,.06)}
+tbody td{padding:13px 14px;vertical-align:middle}
+.sub-row{background:rgba(0,212,138,.05)}
+.sub-row td{font-weight:800;color:var(--green);font-size:14.5px;border-top:1px solid rgba(0,212,138,.18);padding:11px 14px}
+.mono{font-family:'SF Mono','Courier New',monospace;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:4px 11px;border-radius:6px;font-size:12px;font-weight:800}
+.b-f{background:rgba(59,130,246,.14);color:#3B82F6}
+.b-a{background:rgba(168,85,247,.14);color:#A855F7}
+.b-l{background:rgba(245,158,11,.14);color:#C77700}
+.b-p{background:rgba(34,211,238,.14);color:#0E92A8}
+.b-c{background:rgba(249,115,22,.14);color:#EA690D}
+.b-o{background:rgba(107,114,128,.14);color:#6B7280}
+
+/* ═══ FILTER BAR ═══ */
+.fbar{display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.flbl{font-size:12.5px;font-weight:600;color:var(--muted)}
+.fbtns{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ═══ DETAIL ROWS ═══ */
+.det-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--grid-line2)}
+.det-row:last-child{border-bottom:none}
+.det-name{font-size:14.5px;font-weight:700;color:var(--text)}
+.det-sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+/* ═══ PRIVACY ═══ */
+.pval{transition:filter .3s,opacity .3s}
+body.privacy .pval{filter:blur(7px);opacity:.5;pointer-events:none}
+body.privacy .psub{filter:blur(5px);opacity:.45}
+.phigh{transition:text-shadow .2s,font-weight .2s}
+body.privacy .phigh{font-weight:700;text-shadow:0 0 10px currentColor}
+body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
+
+/* ═══ UP/DOWN ═══ */
+.up{color:var(--green)}.down{color:var(--red)}
+
+/* ═══ SEPARATOR ═══ */
+.sep{font-size:13.5px;font-weight:700;color:var(--muted);margin:22px 0 14px;letter-spacing:.1px}
+
+/* ═══ STOCK TICKER CARDS (Acciones) ═══ */
+.ticker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.ticker-card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);padding:18px;position:relative;overflow:hidden;box-shadow:var(--shadow);cursor:default}
+.ticker-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--green),transparent 70%)}
+.ticker-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px}
+.ticker-sym{font-size:14px;font-weight:800;letter-spacing:.3px}
+.ticker-name{font-size:11px;color:var(--muted);margin-top:1px}
+.ticker-val{font-family:'SF Mono','Courier New',monospace;font-size:25px;font-weight:800;margin-top:10px;letter-spacing:-.3px}
+.ticker-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--grid-line2)}
+.ticker-metric{display:flex;flex-direction:column}
+.ticker-metric-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.ticker-metric-val{font-family:'SF Mono','Courier New',monospace;font-size:16px;font-weight:800}
+
+/* ═══ EVENT MARKERS legend ═══ */
+.event-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--grid-line2)}
+.event-chip{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.event-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0}
+
+/* ═══ RESPONSIVE MOBILE ═══ */
+@media(max-width:1100px) and (min-width:769px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .kpi-val{font-size:26px}
+}
+@media(max-width:768px){
+  #sidebar{display:none}
+  #mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--card);border-top:1px solid var(--border);padding:8px 4px 14px}
+  .mob-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:9px;font-weight:600}
+  .mob-item.active{color:var(--green)}
+  .mob-ico{font-size:17px}
+  #main{padding-bottom:72px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .kpi-val{font-size:24px}
+  .kpi-badge{font-size:17px}
+  .g2,.g11{grid-template-columns:1fr}
+  .g3,.ticker-grid{grid-template-columns:repeat(2,1fr)}
+  .g6{grid-template-columns:repeat(3,1fr)}
+}
+@media(min-width:769px){#mob-nav{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ═══ SIDEBAR ═══ -->
+<nav id="sidebar">
+  <div class="sidebar-head">
+    <div class="avatar">G</div>
+    <div>
+      <div class="sidebar-name">Gus</div>
+      <div class="sidebar-sub">Patrimonio familiar</div>
+    </div>
+  </div>
+  <div class="nav-section-label">Vistas</div>
+  <div class="nav-item active" data-sec="resumen"><span class="nav-icon">⬡</span>Resumen</div>
+  <div class="nav-item" data-sec="inversiones"><span class="nav-icon">◈</span>Inversiones</div>
+  <div class="nav-item" data-sec="acciones"><span class="nav-icon">📈</span>Acciones</div>
+  <div class="nav-item" data-sec="liquidez"><span class="nav-icon">◎</span>Liquidez</div>
+  <div class="nav-item" data-sec="evolucion"><span class="nav-icon">↗</span>Evolución</div>
+  <div class="nav-item" data-sec="pensiones"><span class="nav-icon">◫</span>Pensiones</div>
+  <div class="nav-item" data-sec="cripto"><span class="nav-icon">₿</span>Cripto</div>
+  <div class="sidebar-foot">
+    <div class="theme-toggle" id="theme-toggle">
+      <button class="theme-btn active" data-theme="dark">🌙 Oscuro</button>
+      <button class="theme-btn" data-theme="light">☀️ Claro</button>
+    </div>
+    <div class="priv-toggle" id="priv-toggle">
+      <div class="priv-label"><span>🔒</span><span>Modo Privacidad</span></div>
+      <div class="sw" id="sw"></div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══ MAIN ═══ -->
+<div id="main">
+  <div id="priv-banner">
+    🔒 <strong>Modo Privacidad</strong> · Importes en € ocultos · Variaciones % y rentabilidades siempre visibles
+  </div>
+
+  <div id="content">
+
+    <!-- RESUMEN -->
+    <div class="section active" id="s-resumen">
+      <div class="sec-title">Resumen patrimonial</div>
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-lbl">Patrimonio Neto</div>
+          <div class="kpi-val pval" id="k-neto">—</div>
+          <div class="kpi-sub">Consolidado total</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Total Activos</div>
+          <div class="kpi-val pval" id="k-activos">—</div>
+          <div class="kpi-sub">Bruto sin deudas</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Deuda Hipoteca</div>
+          <div class="kpi-val pval" id="k-hip" style="color:var(--red)">—</div>
+          <div class="kpi-sub" id="k-hip-sub">Saldo pendiente</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Variación mensual</div>
+          <div id="k-mes-badge" class="kpi-badge up phigh">—</div>
+          <div class="kpi-sub">
+            <span class="psub" id="k-mes-eur"></span>
+            <span id="k-mes-ref" style="color:var(--muted)"></span>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Rentabilidad total</div>
+          <div id="k-ret-badge" class="kpi-badge up phigh">—</div>
+          <div class="kpi-sub psub" id="k-ret-sub">—</div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="cc">
+          <div class="cc-head">
+            <div>
+              <div class="cc-title">Evolución patrimonio neto</div>
+              <div class="cc-sub" id="evol-sub">—</div>
+            </div>
+            <div class="chart-actions">
+              <button class="tbtn" id="btn-activos">+ Activos</button>
+              <button class="tbtn" id="btn-events">⚑ Eventos</button>
+              <button class="pbtn" data-p="1A">1A</button>
+              <button class="pbtn" data-p="3A">3A</button>
+              <button class="pbtn" data-p="5A">5A</button>
+              <button class="pbtn active" data-p="TODO">Todo</button>
+            </div>
+          </div>
+          <div style="height:240px"><canvas id="ch-evol"></canvas></div>
+          <div class="event-legend" id="event-legend" style="display:none"></div>
+        </div>
+        <div class="cc">
+          <div class="cc-head"><div class="cc-title">Allocation actual</div></div>
+          <div class="donut-wrap">
+            <div style="height:185px"><canvas id="ch-donut"></canvas></div>
+            <div class="donut-leg" id="donut-leg"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <span id="spark-title">Rendimiento por categoría — últimos 12 meses</span>
+        <div class="chart-actions">
+          <button class="pbtn" data-spark-p="1M">1M</button>
+          <button class="pbtn" data-spark-p="3M">3M</button>
+          <button class="pbtn" data-spark-p="6M">6M</button>
+          <button class="pbtn active" data-spark-p="12M">12M</button>
+        </div>
+      </div>
+      <div class="g3" id="spark-grid"></div>
+    </div>
+
+    <!-- INVERSIONES -->
+    <div class="section" id="s-inversiones">
+      <div class="sec-title">Posiciones de inversión</div>
+      <div class="fbar">
+        <span class="flbl">Titular:</span>
+        <div class="fbtns" id="ft">
+          <button class="pbtn active" data-tit="TODOS">Todos</button>
+          <button class="pbtn" data-tit="Gus">Gus</button>
+          <button class="pbtn" data-tit="Silvia">Silvia</button>
+          <button class="pbtn" data-tit="Común">Común</button>
+          <button class="pbtn" data-tit="Chicos">Chicos</button>
+          <button class="pbtn" data-tit="Jorge">Jorge</button>
+          <button class="pbtn" data-tit="David">David</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th data-col="tipo">Tipo ↕</th>
+              <th data-col="dep">Depositario ↕</th>
+              <th data-col="tit">Titular ↕</th>
+              <th data-col="val" style="text-align:right">Valor € ↕</th>
+              <th data-col="pct" style="text-align:right">% Total ↕</th>
+              <th data-col="delta" style="text-align:right">Δ% mes ↕</th>
+            </tr></thead>
+            <tbody id="tb-pos"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCIONES -->
+    <div class="section" id="s-acciones">
+      <div class="sec-title">Acciones individuales</div>
+      <div class="sec-sub" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <span>Posiciones directas en cartera · valores en USD convertidos a EUR al tipo de cambio vigente en cada fecha de compra</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+          <span id="price-status" style="font-size:11.5px;color:var(--muted)">Cotizaciones: estáticas (30 jun 2026)</span>
+          <button class="pbtn" id="btn-refresh-prices">🔄 Actualizar cotizaciones</button>
+        </div>
+      </div>
+
+      <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+        <div class="kpi">
+          <div class="kpi-lbl">Valor total cartera</div>
+          <div class="kpi-val pval" id="acc-total-val">—</div>
+          <div class="kpi-sub">6 valores · 14 posiciones</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Variación diaria</div>
+          <div class="kpi-val pval" id="acc-daily-eur">—</div>
+          <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
+            <span id="acc-daily-badge" class="phigh">—</span>
+          </div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-lbl">Ganancia histórica</div>
+          <div class="kpi-val pval" id="acc-hist-eur">—</div>
+          <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
+            <span id="acc-hist-badge" class="phigh">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="sep">Detalle por valor</div>
+      <div class="ticker-grid" id="ticker-grid"></div>
+
+      <div class="sep">Posiciones individuales (lotes de compra)</div>
+      <div class="card">
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Valor</th><th>Fecha compra</th>
+              <th style="text-align:right">Acciones</th>
+              <th style="text-align:right">Precio compra</th>
+              <th style="text-align:right">Coste €</th>
+              <th style="text-align:right">Valor actual €</th>
+              <th style="text-align:right">Ganancia €</th>
+              <th style="text-align:right">Ganancia %</th>
+            </tr></thead>
+            <tbody id="tb-acciones"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIQUIDEZ -->
+    <div class="section" id="s-liquidez">
+      <div class="sec-title">Liquidez</div>
+      <div class="g11">
+        <div class="cc">
+          <div class="cc-head">
+            <div><div class="cc-title">Evolución liquidez</div><div class="cc-sub">Últimos 24 meses</div></div>
+          </div>
+          <div style="height:220px"><canvas id="ch-liq"></canvas></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:16px;color:var(--text)">Detalle cuentas</div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Depositario</th><th>Titular</th>
+                <th style="text-align:right">Saldo €</th>
+                <th style="text-align:right">Δ% mes</th>
+              </tr></thead>
+              <tbody id="tb-liq"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EVOLUCIÓN -->
+    <div class="section" id="s-evolucion">
+      <div class="sec-title">Evolución histórica</div>
+      <div class="cc" style="margin-bottom:22px">
+        <div class="cc-head">
+          <div><div class="cc-title">Patrimonio neto</div><div class="cc-sub" id="evol2-sub">—</div></div>
+          <div class="chart-actions">
+            <button class="pbtn" data-p2="1A">1A</button>
+            <button class="pbtn" data-p2="3A">3A</button>
+            <button class="pbtn" data-p2="5A">5A</button>
+            <button class="pbtn active" data-p2="TODO">Todo</button>
+          </div>
+        </div>
+        <div style="height:260px"><canvas id="ch-evol2"></canvas></div>
+      </div>
+      <div class="cc">
+        <div class="cc-head">
+          <div>
+            <div class="cc-title">Composición por categoría — 100% apilado</div>
+            <div class="cc-sub">% sobre total activos en cada período · siempre visible independientemente del modo privacidad</div>
+          </div>
+        </div>
+        <div style="height:320px"><canvas id="ch-stack"></canvas></div>
+      </div>
+    </div>
+
+    <!-- PENSIONES -->
+    <div class="section" id="s-pensiones">
+      <div class="sec-title">Planes de pensiones</div>
+      <div class="g11">
+        <div class="cc">
+          <div class="cc-head"><div class="cc-title">Evolución</div></div>
+          <div style="height:220px"><canvas id="ch-pen"></canvas></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:16px">Detalle planes</div>
+          <div id="det-pen"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CRIPTO -->
+    <div class="section" id="s-cripto">
+      <div class="sec-title">Criptomonedas</div>
+      <div class="g11">
+        <div class="cc">
+          <div class="cc-head"><div class="cc-title">Evolución</div></div>
+          <div style="height:220px"><canvas id="ch-cri"></canvas></div>
+        </div>
+        <div class="card">
+          <div style="font-size:13.5px;font-weight:700;margin-bottom:16px">Detalle posiciones</div>
+          <div id="det-cri"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- #content -->
+</div><!-- #main -->
+</div><!-- #app -->
+
+<!-- MOBILE NAV -->
+<div id="mob-nav">
+  <div class="mob-item active" data-sec="resumen"><div class="mob-ico">⬡</div>Resumen</div>
+  <div class="mob-item" data-sec="inversiones"><div class="mob-ico">◈</div>Inversión</div>
+  <div class="mob-item" data-sec="acciones"><div class="mob-ico">📈</div>Acciones</div>
+  <div class="mob-item" data-sec="liquidez"><div class="mob-ico">◎</div>Liquidez</div>
+  <div class="mob-item" data-sec="evolucion"><div class="mob-ico">↗</div>Evolución</div>
+  <div class="mob-item" data-sec="pensiones"><div class="mob-ico">◫</div>Pensiones</div>
+  <div class="mob-item" data-sec="cripto"><div class="mob-ico">₿</div>Cripto</div>
+</div>
+
+<script>
+if (window.Chart && window.chartjsPluginAnnotation) { Chart.register(window.chartjsPluginAnnotation); }
+// ════════════════════════════════════════════════════
+//  EMBEDDED REAL DATA (from CUENTAS.xlsx, TOTAL ACTIVOS)
+// ════════════════════════════════════════════════════
+const EMBEDDED_DATA = {"dates": ["ENE'19", "28 FEB'19", "31 MAR'19", "30 ABR'19", "30 JUNIO'19", "5 SEP'19", "1 OCT'19", "1 NOV'19", "1 DIC'19", "1 ENE'20", "1 FEB'20", "1 MAR'20", "1 ABR'20", "1 MAY'20", "1 JUN'20", "1 JUL'20", "1 AGO'20", "1 SEP'20", "1 OCT'20", "1 NOV'20", "1 DIC'20", "1 ENE'21", "1 FEB'21", "1 MAR'21", "1 ABR'21", "1 MAY'21", "1 JUN'21", "1 JUL'21", "1 SEP'21", "4 OCT'21", "1 NOV'21", "1 DIC'21", "1 ENE'22", "1 FEB'22", "1 ABR'22", "1 MAY'22", "1 JUN'22", "1 AUG'22", "1 OCT'22", "1 NOV'22", "1 DEC'22", "1 ENE'23", "1 FEB'23", "1 MAR'23", "1 ABR'23", "1 MAY'23", "1 JUN'23", "1 JUL'23", "1 AGO'23", "1 SEP'23", "1 OCT'23", "1 NOV'23", "1 DIC'23", "1 ENE'24", "1 FEB'24", "1 MAR'24", "1 ABR'24", "1 MAY'24", "1 JUN'24", "1 JUL'24", "1 AGO'24", "1 SEP'24", "1 OCT'24", "1 NOV'24", "1 DIC'24", "1 ENE'25", "1 FEB'25", "1 MAR'25", "1 ABR'25", "1 MAY'25", "1 JUN'25", "1 JUL'25", "1 AGO'25", "1 SEP'25", "1 OCT'25", "1 NOV'25", "1 DIC'25", "1 ENE'26", "1 FEB'26", "1 MAR'26", "1 ABR'26", "1 MAY'26", "1 JUN'26"], "assets": [{"tipo": "Cuenta ahorro", "dep": "ING Direct", "tit": "Com\u00fan", "series": [43900.0, 45000.0, 63867.0, 57740.0, 62300.0, 62775.0, 63625.0, 44445.0, 50690.0, 51500.0, 52300.0, 52500.0, 111900.0, 82300.0, 83300.0, 83700.0, 84765.0, 62300.0, 63300.0, 60500.0, 61300.0, 62000.0, 63000.0, 62300.0, 62900.0, 63900.0, 62650.0, 61775.0, 59000.0, 58800.0, 59000.0, 59000.0, 61600.0, 62000.0, 64000.0, 64350.0, 64500.0, 61900.0, 55250.0, 56150.0, 14000.0, 11000.0, 11700.0, 10400.0, 12000.0, 12000.0, 11500.0, 13450, 11900.0, 13100.0, 10200.0, 2400.0, 10200.0, 7900.0, 6000.0, 3200.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"tipo": "Cuenta ahorro", "dep": "Open Bank", "tit": "Com\u00fan", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]}, {"tipo": "Cuenta ahorro", "dep": "Revolut", "tit": "Gus", "series": [0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, 6000.0, 24050.0, 30100.0, 30150.0, 30250.0, 30300.0, 30500.0, 30500.0, 30600.0, 30800.0, 30900, 31000.0, 15700.0, 21300, 23800.0, 28600.0, 28000.0, 24500, 20150.0, 24100.0, 20300.0, 15500.0, 10000.0, 8700.0, 11450.0, 31700.0, 30000.0, 14100.0, 9200.0, 9100.0, 9600.0, 11000.0]}, {"tipo": "Cuenta ahorro", "dep": "Trade Republic", "tit": "Gus", "series": [0.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, 26650.0, 37350.0, 37450.0, 37550.0, 37600.0, 37700.0, 37800.0, 37850.0, 37900.0, 37900.0, 38000.0, 38050.0, 38125.0, 38125, 38225.0, 38225, 38225, 38375.0, 38400.0, 38400.0]}, {"tipo": "Cuenta ahorro", "dep": "Renta4", "tit": "Com\u00fan", "series": [0.0, 0.0, 1078.0, 1270.0, 1870.0, 350.0, 900.0, 1200.0, 1200.0, 1200.0, 1200.0, 1200.0, 0.0, 13500.0, 13900.0, 3700.0, 3700.0, 16100.0, 16100.0, 16100.0, 16100.0, 15550.0, 15550.0, 14000.0, 14000.0, 13900.0, 13950.0, 13950.0, 13950.0, 13900.0, 12900.0, 11700.0, 11700.0, 11050.0, 12300.0, 12850.0, 12850.0, 14600.0, 15550.0, 15800.0, 16100.0, 16400.0, 16680.0, 17000.0, 17300.0, 17560.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 200.0, 200.0, 200.0, 200.0, 200.0, 200.0, 200.0, 200.0, 200.0, 200.0, 100.0, 100.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75.0, 75, 75, 75, 75, 75.0, 75.0, 75.0]}, {"tipo": "Cuenta ahorro", "dep": "Bankinter", "tit": "Com\u00fan", "series": [0.0, null, null, null, null, null, null, null, null, 0.0, null, null, 0.0, 30000.0, 30000.0, 30000.0, 30000.0, 5000.0, 7000.0, 8800.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null]}, {"tipo": "Cuenta ahorro", "dep": "DeGiro", "tit": "Gus", "series": [0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, 6000.0, 6000.0, 6000.0, 6000.0, 6000.0, 6000.0, 4400.0, 4400.0, 4400.0, 4400.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null]}, {"tipo": "Cuenta ahorro", "dep": "ING Direct", "tit": "Silvia", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null]}, {"tipo": "Cuenta ahorro", "dep": "Open Bank", "tit": "Silvia", "series": [28000.0, 28000.0, 28000.0, 28000.0, 28000.0, 28000.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 28200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 35200.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null]}, {"tipo": "Cuenta ahorro", "dep": "Myinvestor", "tit": "Com\u00fan", "series": [0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, 0.0, 35500.0, 35640.0, 53500.0, 53500.0, 53500.0, 53500.0, 53500.0, 53500.0, 53650.0, 53650.0, 53650.0, 53675.0, 53700.0, 53700.0, 54800.0, 54800, 54800.0, 55000.0, 56000.0, 52600.0, 52900.0, 53100.0, 53100.0, 53200.0, 53400.0, 53500.0, 53550.0, 53600.0, 53600.0, 53675.0, 53675.0, 54025.0, 54025, 54250.0, 54250, 54275.0, 54350.0, 54400.0, 54500.0]}, {"tipo": "Cuenta ahorro", "dep": "Abanca", "tit": "Gus", "series": [null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 1000.0, 3000.0, 4500.0, 0.0, 2000.0, 4000.0, 4000.0, 6000.0, 8000.0, 8000.0, 1000.0, 3000.0, 1200.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Cuenta ahorro", "dep": "ING Direct", "tit": "Gus", "series": [4350.0, 4600.0, 4373.0, 3123.0, 600.0, 500.0, 5360.0, 4900.0, 3400.0, 2100.0, 2500.0, 2200.0, 5000.0, 4900.0, 5700.0, 6500.0, 5560.0, 7000.0, 6400.0, 7400.0, 6000.0, 6800.0, 5700.0, 6000.0, 6000.0, 6100.0, 6500.0, 6600.0, 3600.0, 3800.0, 4200.0, 4000.0, 4800.0, 3800.0, 3750.0, 2675.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Capital riesgo", "dep": "Myinvestor", "tit": "Gus", "series": [null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Cuenta stocks", "dep": "Merrill Lynch/Charles Schwab", "tit": "Gus", "series": [null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 1200.0, 1200.0, 1200.0, 1500.0, 1500.0, 1500.0, 1300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Plan Pensiones", "dep": "Bestinver", "tit": "Gus", "series": [5265.0, 5865.0, 5935.0, 6167.0, 6000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Fondos ", "dep": "Abante", "tit": "Silvia/Com\u00fan", "series": [87000.0, 89300.0, 90075.0, 93600.0, 92000.0, 92244.0, 94220.0, 96000.0, 97400.0, 100500.0, 100890.0, 100700.0, 86400.0, 92200.0, 95500.0, 96250.0, 97900.0, 98950.0, 98940.0, 98000.0, 103700.0, 105100.0, 107700.0, 109500.0, 111400.0, 113475.0, 112500.0, 117000.0, 118700.0, 11360.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Fondos", "dep": "Bestinver", "tit": "Silvia", "series": [6650.0, 6765.0, 6762.0, 6870.0, 6880.0, 7000.0, 7000.0, 7000.0, 7000.0, 7100.0, 7100.0, 6970.0, 6500.0, 6700.0, 6800.0, 6900.0, 7000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Fondos", "dep": "Indexa Capital", "tit": "Com\u00fan", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10000.0, 10575.0, 11000.0, 11525.0, 11300.0, 10430.0, 11900.0, 12500.0, 13100.0, 13860.0, 16000.0, 16500.0, 17200.0, 19000.0, 19800.0, 20900.0, 21600.0, 23400.0, 24190.0, 24950.0, 26450.0, 28500.0, 106100.0, 110500.0, 112550.0, 115550.0, 111600.0, 114200.0, 112075.0, 110700.0, 114800, 107300.0, 110300.0, 115500.0, 113800.0, 119500.0, 121100.0, 122000.0, 124140.0, 128100.0, 131300.0, 135550.0, 135700.0, 135400.0, 132800.0, 142250.0, 146050.0, 150200.0, 154200.0, 159000.0, 156300.0, 158925.0, 162300.0, 162900.0, 163850.0, 167700.0, 170900.0, 178250.0, 178500.0, 182500.0, 203900.0, 195100.0, 191150.0, 200950.0, 202500.0, 209375.0, 211400.0, 217500.0, 225225.0, 225300.0, 227150.0, 248400.0, 257200.0, 241700.0, 261000.0, 275800.0]}, {"tipo": "Fondos", "dep": "Myinvestor", "tit": "Com\u00fan", "series": [0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, 0.0, 0.0, 11750.0, 11950.0, 12050.0, 11600.0, 11500.0, 11175.0, 11175.0, 11050.0, 10100.0, 10200.0, 10800.0, 10100.0, 10470.0, 10350.0, 10375.0, 10400.0, 10600.0, 10900.0, 10900.0, 10800.0, 10800.0, 10400.0, 11000.0, 11350.0, 11600.0, 11700.0, 12050.0, 68200.0, 70650.0, 73700.0, 75175.0, 76400.0, 78300.0, 82000.0, 87400.0, 86750.0, 102100.0, 111800.0, 105650.0, 102250.0, 106500.0, 107350.0, 110400.0, 111300.0, 113900.0, 117700.0, 116600.0, 116750.0, 118675.0, 121575.0, 114425.0, 122200.0, 128250.0]}, {"tipo": "Plan Pensiones", "dep": "Indexa Capital", "tit": "Gus", "series": [4330.0, 4458.0, 4508.0, 4612.0, 4600.0, 10850.0, 10900.0, 10990.0, 11225.0, 11250.0, 11390.0, 10800.0, 9700.0, 10500.0, 10700.0, 10800.0, 10940.0, 11200.0, 11000.0, 10950.0, 11700.0, 11750.0, 11900.0, 11900.0, 12300.0, 12450.0, 12500.0, 12800.0, 13050.0, 12800.0, 13200.0, 13250.0, 13575.0, 13000.0, 13150.0, 12800.0, 12600.0, 12650.0, 11700.0, 11900.0, 12450.0, 12000.0, 12500.0, 12670.0, 12500.0, 12450.0, 12950.0, 13100.0, 13550.0, 13400.0, 13200.0, 12650.0, 13550.0, 13800.0, 14350.0, 14775.0, 15200.0, 15100.0, 15400.0, 15700.0, 15600.0, 15600.0, 16150.0, 16300.0, 16800.0, 16850.0, 17400.0, 17300.0, 16400.0, 15650.0, 16650.0, 16650.0, 17275.0, 17375.0, 17800.0, 18475.0, 18400.0, 20075.0, 20375.0, 20900.0, 19475.0, 21050.0, 22250.0]}, {"tipo": "Fondos ", "dep": "Indexa Capital", "tit": "Jorge", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3110.0, 3190.0, 3330.0, 3245.0, 3000.0, 3300.0, 3400.0, 5300.0, 5400.0, 5650.0, 5660.0, 5750.0, 6200.0, 6300.0, 6450.0, 6500.0, 6900.0, 7000.0, 7100.0, 7450.0, 7800.0, 7750.0, 8100.0, 8400.0, 8650.0, 8350.0, 8700.0, 8625.0, 8550.0, 8900.0, 8500.0, 8800.0, 9000.0, 8900.0, 9250.0, 9400.0, 9500.0, 9620.0, 9830.0, 10300.0, 10600.0, 10675.0, 10675.0, 10475.0, 11200.0, 11600.0, 11950.0, 12300.0, 12850.0, 12750.0, 13075.0, 13525.0, 13675.0, 13850.0, 14200.0, 14250.0, 15000.0, 15100.0, 15450.0, 15700.0, 15000.0, 14650.0, 15450.0, 15600.0, 16225.0, 16400.0, 16950.0, 17675.0, 17700.0, 18000.0, 18500.0, 19150.0, 18000.0, 19450.0, 20650.0]}, {"tipo": "Fondos ", "dep": "Indexa Capital", "tit": "David", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3110.0, 3190.0, 3330.0, 3245.0, 3000.0, 3300.0, 3400.0, 5300.0, 5400.0, 5650.0, 5660.0, 5750.0, 6200.0, 6300.0, 6450.0, 6500.0, 6900.0, 7000.0, 7100.0, 7450.0, 7800.0, 7750.0, 8100.0, 8400.0, 8650.0, 8350.0, 8700.0, 8625.0, 8550.0, 8900.0, 8500.0, 8800.0, 9000.0, 8900.0, 9250.0, 9400.0, 9500.0, 9730.0, 10050.0, 10000.0, 10300.0, 10375.0, 10375.0, 10175.0, 11000.0, 11300.0, 11700.0, 12075.0, 12600.0, 12525.0, 12850.0, 13300.0, 13450.0, 13600.0, 14000.0, 14000.0, 14750.0, 14850.0, 15250.0, 15450.0, 14750.0, 14400.0, 15200.0, 15375.0, 15700.0, 15800.0, 16050.0, 16800.0, 17200.0, 17500.0, 18000.0, 18700.0, 17500.0, 19000.0, 20300.0]}, {"tipo": "Fondos", "dep": "My Investor fondo Baelo Patrimoni", "tit": "Com\u00fan", "series": [0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, 0.0, 45000.0, 47300.0, 48200.0, 50075.0, 49850.0, 51050.0, 51575.0, 51575.0, 51600.0, 48950.0, 50100.0, 51600.0, 50600.0, 52300.0, 51300.0, 51375.0, 51800.0, 51800.0, 51800.0, 52400.0, 52200.0, 52200.0, 50100.0, 52300.0, 53050.0, 53600.0, 53735.0, 54775.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Fondos", "dep": "Finizens", "tit": "Com\u00fan", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10000.0, 10560.0, 10975.0, 11460.0, 11634.0, 9930.0, 10600.0, 10900.0, 11000.0, 11200.0, 11450.0, 11280.0, 11200.0, 11900.0, 12000.0, 12350.0, 12600.0, 12650.0, 12850.0, 12860.0, 13300.0, 13500.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Otros", "dep": "Urbanitae", "tit": "Com\u00fan", "series": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0.0, 1000.0, 1000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones Visa ", "dep": "Merryll Lynch", "tit": "Gus", "series": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 87350.0, 88730.0, 87400.0, 91400.0, 90900.0, 95575.0, 92700.0, 94500.0, 121400.0, 121250.0, 132000.0, 134200.0, 132890.0, 129650.0, 129680.0, 125450.0, 125580.0, 132300.0, 126840.0, 138000.0, 173000.0, 182350.0, 182334, 146450.0, 134500.0, 128100.0, 136100.0, 125850.0, 128600.0, 126000.0, 124200.0, 123700.0, 140450.0, 145000.0, 132270.0, 131975.0, 127000.0, 137000.0, 136300.0]}, {"tipo": "Acciones", "dep": "SelfBank", "tit": "Com\u00fan", "series": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, 0.0, 41975.0, 39500.0, 39500.0, 41150.0, 44900.0, 45185.0, 46800.0, 46420.0, 45000.0, 51850.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones ", "dep": "Renta4", "tit": "Com\u00fan", "series": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, 0.0, 31725.0, 31500.0, 31500.0, 31725.0, 31144.0, 28675.0, 32600.0, 34475.0, 34700.0, 40000.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones", "dep": "ING Direct", "tit": "Com\u00fan", "series": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, 0.0, 4725, 4990, 4990, 3377, 3426, 3276, 3260, 3402, 2522, 3700.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones", "dep": "Bankinter", "tit": "Com\u00fan", "series": [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, 0.0, null, null, null, null, null, null, null, null, null, null, null, 0.0, 0.0, 3475.0, 3900.0, 3900.0, 4875.0, 4785.0, 4570.0, 4730.0, 5340.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones", "dep": "Renta 4 / Selfbank", "tit": "Com\u00fan", "series": [66400.0, 68700.0, 55525.0, 66230.0, 75000.0, 78000.0, 78065.0, 81500.0, 105700.0, 110000.0, 116050.0, 108700.0, 53000.0, 47100.0, 53000.0, 61750.0, 62000.0, 109000.0, 108600.0, 107000.0, 147500.0, 148800.0, 149100.0, 153400.0, 153400.0, 157700.0, 148400.0, 168980.0, 162750.0, 157750.0, 162900.0, 168900.0, 171100, 163430, 160220, 150050, 140400, 140550, 130350, 144800.0, 151400.0, 138825, 153780, 153000.0, 70175.0, 66050.0, 72400.0, 75450.0, 79850.0, 75600.0, 71400.0, 70275.0, 78300.0, 78600.0, 80400.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 97000.0, 99500.0, 101840.0, 91850.0, 91200.0, 98250.0, 95675.0, 103360.0, 103275.0, 108400.0, 115150.0, 105075.0, 105000.0, 110170.0, 109450.0, 109450.0, 116400.0, 128050.0]}, {"tipo": "Acciones", "dep": "ING / Bankinter", "tit": "Silvia", "series": [4550, 5735, 6139, 6430, 7450.0, 8675, 7475.0, 7450.0, 7930.0, 8700, 10010, 10130, 1800.0, 1700, 1670, 1700, 2190.0, 2350.0, 2250.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones", "dep": "ING Direct", "tit": "Chicos", "series": [3500.0, 3680.0, 2195.0, 2300.0, 2300.0, 2500.0, 2460.0, 2650.0, 2830.0, 2950.0, 2900.0, 2900.0, 2350.0, 2400.0, 2600.0, 3000.0, 2940.0, 2800.0, 2800.0, 2250.0, 3000.0, 3100.0, 3500.0, 4300.0, 5250.0, 4850.0, 4950.0, 5000.0, 5000.0, 4890.0, 5250.0, 5700.0, 6200.0, 5400.0, 5400.0, 4600.0, 4700.0, 4550.0, 3650.0, 3950.0, 4250.0, 4000.0, 4500.0, 4800.0, 4975.0, 4510.0, 5600.0, 5800.0, 6075.0, 6180.0, 5600.0, 5600.0, 5950.0, 6450.0, 6850.0, 8175.0, 8400.0, 8000.0, 9025.0, 9650.0, 7400.0, 7850.0, 7950.0, 7800.0, 7650.0, 7200.0, 7600, 6700.0, 6000.0, 5850.0, 6400.0, 7050.0, 7300.0, 5950.0, 8150.0, 8875.0, 9550.0, 9600.0, 11950.0, 13850.0, 12975.0, 14800.0, 16950.0]}, {"tipo": "Acciones", "dep": "ING / Bankinter / Renta 4", "tit": "Gus", "series": [9000.0, 9650, 8179, 9200, 11000.0, 13900.0, 7830.0, 7552.0, 7840.0, 7740.0, 8450.0, 8338.0, 4500.0, 5400.0, 6700.0, 8600.0, 8990.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]}, {"tipo": "Acciones Visa ", "dep": "Charles Schwab", "tit": "Gus", "series": [8000.0, 8850.0, 9466.0, 9900.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null]}, {"tipo": "Cryptomonedas", "dep": "Coinbase / Binance / Revolut", "tit": "Gus", "series": [1700.0, 2000.0, 2241.0, 2300.0, 3300.0, 2200.0, 2200.0, 2300.0, 2000.0, 1800.0, 2300.0, 2420.0, 1870.0, 2300.0, 2500.0, 2400.0, 2900.0, 3100.0, 2900.0, 3100.0, 4400.0, 5200.0, 6550.0, 10200.0, 12900.0, 14000.0, 10550.0, 9000.0, 15050.0, 14950.0, 16750.0, 15600.0, 13000.0, 10220.0, 12450.0, 9000.0, 7450.0, 7450.0, 5000.0, 5900.0, 4600.0, 4600.0, 5700.0, 6000.0, 6875.0, 7000.0, 6700.0, 7000.0, 6700.0, 6100.0, 6100.0, 8000.0, 9750.0, 9800.0, 9900.0, 13400.0, 15800.0, 13000.0, 15875.0, 14250.0, 13700.0, 13075.0, 13950.0, 15000.0, 22250.0, 23200.0, 23700.0, 26000.0, 24340.0, 26300.0, 28700.0, 28900.0, 32300.0, 30150.0, 31200.0, 29100.0, 24350.0, 23500.0, 21850.0, 16800.0, 18500.0, 20500.0, 19650.0]}], "seriesNeto": [111845, 123161, 130305, 141010, 147400, 155494, 157905, 165187, 210970, 220846, 233041, 225926, 200380, 220500, 236370, 244450, 249827, 259974, 263153, 266154, 321788, 328962, 335982, 347083, 357900, 366867, 354912, 381215, 382450, 375620, 392200, 416900, 427900, 410060, 419689, 404195, 390300, 396200, 366300, 389600, 433900, 414325, 440830, 440620, 449425, 449630, 460430, 474000, 482225, 483205, 473150, 469875, 549100, 556300, 575750, 588985, 593155, 587315, 601607, 607030, 596986, 614015, 617127, 635522, 722300, 736225, 765159, 764015, 719265, 701075, 739775, 726825, 747610, 739400, 754650, 776375, 798550, 805125, 806840, 811375, 780925, 833875, 872175], "seriesActivos": [272645, 282603, 288343, 297742, 301300, 306994, 308235, 314187, 352770, 361395, 372935, 364482, 337580, 356300, 370770, 378200, 382945, 391750, 393590, 395200, 438200, 443900, 450350, 460000, 469200, 477015, 463610, 489355, 488300, 480050, 495150, 502850, 512150, 493850, 500620, 483600, 468250, 472150, 440050, 461900, 433900, 414325, 440830, 440620, 449425, 449630, 460430, 474000, 482225, 483205, 473150, 469875, 549100, 556300, 575750, 588985, 593155, 587315, 601607, 607030, 596986, 614015, 617127, 635522, 722300, 736225, 765159, 764015, 719265, 701075, 739775, 726825, 747610, 739400, 754650, 776375, 798550, 805125, 806840, 811375, 780925, 833875, 872175], "seriesHip": [-160800.0, -159442.0, -158038.0, -156732.0, -153900.0, -151500.0, -150330.0, -149000.0, -141800.0, -140549.0, -139894.0, -138556.0, -137200.0, -135800.0, -134400.0, -133750.0, -133118.0, -131776.0, -130437.0, -129046.0, -116412.0, -114938.0, -114368.0, -112917.0, -111300.0, -110148.0, -108698.0, -108140.0, -105850.0, -104430.0, -102950.0, -85950, -84250.0, -83790.0, -80931.0, -79405.0, -77950.0, -75950.0, -73750.0, -72300.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]};
+
+// ════════════════════════════════════════════════════
+//  STOCK PORTFOLIO DATA (Acciones individuales)
+// ════════════════════════════════════════════════════
+const STOCK_PURCHASES = [
+  {ticker:'AAPL', name:'Apple Inc.', shares:168, priceUsd:128.78, date:'2020-08-24', fx:0.84524},
+  {ticker:'AMAT', name:'Applied Materials', shares:44, priceUsd:52.02, date:'2018-06-04', fx:0.85624},
+  {ticker:'PLTR', name:'Palantir Technologies', shares:65, priceUsd:28.00, date:'2021-02-19', fx:0.82686},
+  {ticker:'NET', name:'Cloudflare', shares:50, priceUsd:17.40, date:'2019-11-04', fx:0.90490},
+  {ticker:'V', name:'Visa Inc.', shares:68, priceUsd:324.12, date:'2025-11-18', fx:0.86520},
+  {ticker:'V', name:'Visa Inc.', shares:83, priceUsd:311.85, date:'2024-11-18', fx:0.94153},
+  {ticker:'V', name:'Visa Inc.', shares:94, priceUsd:294.56, date:'2023-11-20', fx:0.92430},
+  {ticker:'V', name:'Visa Inc.', shares:63, priceUsd:210.80, date:'2022-11-22', fx:0.98116},
+  {ticker:'V', name:'Visa Inc.', shares:70, priceUsd:200.86, date:'2021-11-19', fx:0.87596},
+  {ticker:'V', name:'Visa Inc.', shares:109, priceUsd:207.57, date:'2020-11-18', fx:0.84559},
+];
+const VUAA_PURCHASES = [
+  {shares:150, priceEur:114.515, date:'2026-01-12'},
+  {shares:237, priceEur:114.380, date:'2026-01-14'},
+  {shares:31,  priceEur:111.760, date:'2026-01-21'},
+  {shares:14,  priceEur:111.715, date:'2026-02-24'},
+];
+const STOCK_CURRENT = {
+  AAPL: {price:281.74, prevClose:283.78, currency:'USD', name:'Apple Inc.'},
+  AMAT: {price:694.64, prevClose:670.00, currency:'USD', name:'Applied Materials'},
+  PLTR: {price:115.70, prevClose:112.93, currency:'USD', name:'Palantir Technologies'},
+  NET:  {price:245.54, prevClose:240.01, currency:'USD', name:'Cloudflare'},
+  V:    {price:341.74, prevClose:341.65, currency:'USD', name:'Visa Inc.'},
+  VUAA: {price:125.20, prevClose:125.05, currency:'EUR', name:'Vanguard S&P 500 UCITS ETF'},
+};
+const USD_EUR_TODAY = 0.8530; // tipo de cambio spot, fallback si no hay conexión
+
+// ════════════════════════════════════════════════════
+//  FINNHUB LIVE PRICE FETCH
+// ════════════════════════════════════════════════════
+const FINNHUB_API_KEY = 'd91v4kpr01qg69gs6p7gd91v4kpr01qg69gs6p80';
+const FINNHUB_SYMBOLS = {
+  AAPL: 'AAPL', AMAT: 'AMAT', PLTR: 'PLTR', NET: 'NET', V: 'V',
+  VUAA: 'VUAA.DE' // Vanguard S&P 500 UCITS ETF, XETRA listing, EUR-denominated
+};
+// USD/EUR forex pair on Finnhub (Quandl-style OANDA symbol)
+const FINNHUB_FX_SYMBOL = 'OANDA:USD_EUR';
+
+async function fetchFinnhubQuote(symbol){
+  const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${FINNHUB_API_KEY}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const data = await res.json();
+  // c = current price, pc = previous close. Finnhub returns c:0 for invalid/unsupported symbols.
+  if(!data || !data.c || data.c === 0) throw new Error('Sin datos para '+symbol);
+  return { price: data.c, prevClose: data.pc || data.c };
+}
+
+async function fetchLiveUsdEur(){
+  try{
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(FINNHUB_FX_SYMBOL)}&token=${FINNHUB_API_KEY}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    if(data && data.c && data.c > 0) return data.c;
+  }catch(e){ /* fall through to static fallback */ }
+  return USD_EUR_TODAY;
+}
+
+async function refreshLivePrices(){
+  const statusEl = $('price-status');
+  const btn = $('btn-refresh-prices');
+  if(btn) btn.disabled = true;
+  if(statusEl){ statusEl.textContent = '⏳ Actualizando cotizaciones…'; statusEl.style.color = 'var(--accent)'; }
+
+  const tickers = Object.keys(FINNHUB_SYMBOLS);
+  const results = await Promise.allSettled(tickers.map(t => fetchFinnhubQuote(FINNHUB_SYMBOLS[t])));
+
+  let okCount = 0, failCount = 0;
+  results.forEach((r, i) => {
+    const ticker = tickers[i];
+    if(r.status === 'fulfilled'){
+      STOCK_CURRENT[ticker].price = r.value.price;
+      STOCK_CURRENT[ticker].prevClose = r.value.prevClose;
+      okCount++;
+    } else {
+      failCount++;
+      console.warn('Finnhub fetch failed for', ticker, r.reason);
+    }
+  });
+
+  // Update USD/EUR rate live too (falls back to static if it fails)
+  const liveRate = await fetchLiveUsdEur();
+  window.LIVE_USD_EUR = liveRate;
+
+  if(btn) btn.disabled = false;
+  const now = new Date();
+  const timeStr = now.toLocaleString('es-ES', {hour:'2-digit',minute:'2-digit',day:'2-digit',month:'2-digit'});
+  if(statusEl){
+    if(failCount === 0){
+      statusEl.textContent = `✓ Cotizaciones en vivo · actualizado ${timeStr}`;
+      statusEl.style.color = 'var(--green)';
+    } else if(okCount > 0){
+      statusEl.textContent = `⚠ Parcial (${okCount}/${tickers.length}) · ${timeStr}`;
+      statusEl.style.color = 'var(--amber)';
+    } else {
+      statusEl.textContent = `✗ Sin conexión · usando precios estáticos (30 jun 2026)`;
+      statusEl.style.color = 'var(--red)';
+    }
+  }
+
+  // Rebuild Acciones section with fresh prices
+  buildAcciones();
+}
+
+// ════════════════════════════════════════════════════
+//  GLOBAL MARKET EVENTS (for evolution chart dip annotations)
+// ════════════════════════════════════════════════════
+const MARKET_EVENTS = [
+  {match:['ENE','19'], yearMonth:[2019,1], label:'—', skip:true},
+  {yearMonth:[2020,3], label:'COVID-19', detail:'Crash bursátil por inicio de la pandemia'},
+  {yearMonth:[2022,2], label:'Guerra Ucrania', detail:'Invasión rusa de Ucrania'},
+  {yearMonth:[2022,9], label:'Inflación/Tipos', detail:'Subidas agresivas de tipos de la Fed'},
+  {yearMonth:[2023,3], label:'Crisis bancaria', detail:'Colapso de Silicon Valley Bank'},
+  {yearMonth:[2023,10], label:'Guerra Israel-Gaza', detail:'Estallido del conflicto en Oriente Medio'},
+  {yearMonth:[2024,8], label:'Carry trade JPY', detail:'Desplome por desapalancamiento del yen'},
+  {yearMonth:[2025,4], label:'Aranceles Trump', detail:'Shock arancelario global'},
+  {yearMonth:[2026,6], label:'Conflicto Irán', detail:'Escalada militar en Oriente Medio'},
+].filter(e => !e.skip);
+
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+let DATA = null;
+let CH = {};
+let sortCol = 'val', sortDir = -1;
+let filterTit = 'TODOS';
+let showActivos = false;
+let showEvents = false;
+let period1 = 'TODO', period2 = 'TODO';
+let sparkPeriodMonths = 12;
+let privacy = localStorage.getItem('priv') === '1';
+let theme = localStorage.getItem('theme') || 'dark';
+
+// ════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════
+const COLORS_DARK = {
+  'Fondos/ETFs':'#3B82F6', 'Acciones':'#A855F7',
+  'Liquidez':'#F59E0B',    'Pensiones':'#22D3EE',
+  'Cripto':'#F97316',      'Otros':'#6B7280'
+};
+const COLORS_LIGHT = {
+  'Fondos/ETFs':'#2563EB', 'Acciones':'#9333EA',
+  'Liquidez':'#C77700',    'Pensiones':'#0E92A8',
+  'Cripto':'#EA690D',      'Otros':'#6B7280'
+};
+function COLORS(){ return theme==='light' ? COLORS_LIGHT : COLORS_DARK; }
+const BADGES = {
+  'Fondos/ETFs':'b-f','Acciones':'b-a','Liquidez':'b-l',
+  'Pensiones':'b-p','Cripto':'b-c','Otros':'b-o'
+};
+const CATS = ['Fondos/ETFs','Acciones','Liquidez','Pensiones','Cripto','Otros'];
+
+// ════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════
+function cat(tipo) {
+  if (!tipo) return 'Otros';
+  const t = tipo.toLowerCase().replace(/\s+/g,' ').trim();
+  if (t.includes('hipoteca')) return 'Deuda';
+  if (t.includes('fondo')||t.includes('fondos')||t.includes('capital riesgo')) return 'Fondos/ETFs';
+  if (t.includes('accion')||t.includes('acciones')||t.includes('cuenta stocks')) return 'Acciones';
+  if (t.includes('cuenta ahorro')||t.includes('ahorro')) return 'Liquidez';
+  if (t.includes('plan pension')||t.includes('pensiones')) return 'Pensiones';
+  if (t.includes('crypto')||t.includes('cripto')||t.includes('cryptomoneda')) return 'Cripto';
+  return 'Otros';
+}
+const $ = id => document.getElementById(id);
+function eur(v){ if(v==null) return '—'; return Math.round(v).toLocaleString('es-ES')+' €'; }
+function eur2(v){ if(v==null) return '—'; return v.toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function pct(v,d=1){ if(v==null) return '—'; return (v*100).toFixed(d).replace('.',',')+' %'; }
+function delta(v){
+  if(v==null||!isFinite(v)) return {txt:'—',cls:''};
+  const p=(v*100).toFixed(1).replace('.',',');
+  return {txt:(v>=0?'▲ ':'▼ ')+p+' %', cls:v>=0?'up':'down'};
+}
+function parseLabel(lbl){
+  const MO={'ENE':0,'FEB':1,'MAR':2,'ABR':3,'MAY':4,'JUN':5,'JUNIO':5,'JUL':6,
+            'AGO':7,'AUG':7,'SEP':8,'OCT':9,'NOV':10,'DIC':11,'DEC':11};
+  const m=lbl.match(/([A-Z]+)'(\d{2})/i); if(!m) return null;
+  const mo=MO[m[1].toUpperCase()]; if(mo===undefined) return null;
+  return new Date(2000+parseInt(m[2]),mo,1);
+}
+function slicePeriod(series, p){
+  const now=new Date(); let cut=null;
+  if(p==='1A') cut=new Date(now.getFullYear()-1,now.getMonth(),1);
+  else if(p==='3A') cut=new Date(now.getFullYear()-3,now.getMonth(),1);
+  else if(p==='5A') cut=new Date(now.getFullYear()-5,now.getMonth(),1);
+  return series.filter(x=>{ if(!x.val) return false; if(!cut) return true; const d=parseLabel(x.label); return d&&d>=cut; });
+}
+function latestIdx(series){ for(let i=series.length-1;i>=0;i--) if(series[i].val) return i; return -1; }
+
+// FIXED: get value exactly N months back from idx (not N points back)
+function idxMonthsBack(dates, idx, months){
+  const target = parseLabel(dates[idx]);
+  if(!target) return Math.max(0, idx-months);
+  const targetDate = new Date(target.getFullYear(), target.getMonth()-months, 1);
+  // find closest date <= targetDate
+  let best = 0;
+  for(let i=0;i<=idx;i++){
+    const d = parseLabel(dates[i]);
+    if(d && d <= targetDate) best = i;
+  }
+  return best;
+}
+
+function TT(){
+  return {backgroundColor:'var(--tooltip-bg)'.trim(), borderColor:getCssVar('--tooltip-border'),
+    borderWidth:1, titleColor:getCssVar('--text'), bodyColor:getCssVar('--text2'), padding:10, cornerRadius:6};
+}
+function getCssVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+function chartTT(){
+  return {
+    backgroundColor:getCssVar('--tooltip-bg'), borderColor:getCssVar('--tooltip-border'),
+    borderWidth:1, titleColor:getCssVar('--text'), bodyColor:getCssVar('--text2'),
+    padding:10, cornerRadius:6
+  };
+}
+function axisColor(){ return getCssVar('--muted'); }
+function gridColor(){ return getCssVar('--grid-line'); }
+
+function yCallback(v, pctBase){
+  if(privacy){
+    const chg = pctBase ? ((v-pctBase)/Math.abs(pctBase)*100) : v;
+    return (chg>=0?'+':'')+chg.toFixed(1)+' %';
+  }
+  const a=Math.abs(v);
+  return a>=1e6?(v/1e6).toFixed(1).replace('.',',')+' M':a>=1e3?(v/1e3).toFixed(0)+'K':v;
+}
+
+// ════════════════════════════════════════════════════
+//  LOAD DATA FROM EMBEDDED SOURCE
+// ════════════════════════════════════════════════════
+function loadEmbedded(){
+  const dates = EMBEDDED_DATA.dates;
+  const assets = EMBEDDED_DATA.assets.map(a=>({
+    tipo:a.tipo, dep:a.dep, tit:a.tit, cat:cat(a.tipo),
+    series: a.series.map((v,i)=>({label:dates[i], val:(v&&v!==0)?v:null}))
+  })).filter(a=>cat(a.tipo)!=='Deuda');
+
+  const sN = EMBEDDED_DATA.seriesNeto.map((v,i)=>({label:dates[i], val:v||null}));
+  const sA = EMBEDDED_DATA.seriesActivos.map((v,i)=>({label:dates[i], val:v||null}));
+  const sH = EMBEDDED_DATA.seriesHip.map((v,i)=>({label:dates[i], val:v||null}));
+
+  return {assets, dates, sN, sA, sH};
+}
+
+// ════════════════════════════════════════════════════
+//  BUILD DASHBOARD
+// ════════════════════════════════════════════════════
+function build(){
+  DATA = loadEmbedded();
+  const ni=latestIdx(DATA.sN);
+  if(ni<0){ console.error('No data'); return; }
+
+  const nNow=DATA.sN[ni].val;
+  const nPrev=ni>0?DATA.sN[ni-1].val:null;
+  const nFirst=DATA.sN.find(x=>x.val&&x.val>0);
+  const aNow=DATA.sA[ni]?.val||nNow;
+  const hNow=DATA.sH[ni]?.val||0;
+
+  const dMes=nPrev?(nNow-nPrev)/Math.abs(nPrev):null;
+  const dTot=nFirst?(nNow-nFirst.val)/Math.abs(nFirst.val):null;
+
+  $('k-neto').textContent=eur(nNow);
+  $('k-activos').textContent=eur(aNow);
+  $('k-hip').textContent=hNow?eur(Math.abs(hNow)):'0 €';
+  $('k-hip-sub').textContent = hNow ? 'Saldo pendiente' : 'Hipoteca cancelada';
+
+  const dm=delta(dMes);
+  const kb=$('k-mes-badge');
+  kb.textContent=dm.txt; kb.className='kpi-badge phigh '+(dm.cls||'up');
+  if(nPrev){ const d=nNow-nPrev; $('k-mes-eur').textContent=(d>=0?'+':'')+eur(d)+' '; }
+  $('k-mes-ref').textContent=nPrev?'vs '+DATA.sN[ni-1].label:'';
+
+  const dt=delta(dTot);
+  const kb2=$('k-ret-badge');
+  kb2.textContent=dt.txt; kb2.className='kpi-badge phigh '+(dt.cls||'up');
+  $('k-ret-sub').textContent=nFirst?'desde '+nFirst.label:'';
+
+  const ct={};
+  for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
+
+  drawEvol('ch-evol',period1,showActivos);
+  drawDonut(ct,aNow);
+  drawSparks(DATA,ni);
+  drawTable();
+  drawLiquidez(DATA,ni);
+  drawEvol2(period2);
+  drawStack(DATA);
+  drawSection('pen',DATA,ni);
+  drawSection('cri',DATA,ni);
+  buildAcciones();
+}
+
+// ════════════════════════════════════════════════════
+//  CHART: EVOLUTION with EVENT MARKERS
+// ════════════════════════════════════════════════════
+function findEventAnnotations(labels){
+  if(!showEvents) return {};
+  const annotations = {};
+  let n = 0;
+  for(const ev of MARKET_EVENTS){
+    const [ey, em] = ev.yearMonth;
+    // find closest label index matching that year/month
+    let bestIdx = -1, bestDiff = Infinity;
+    labels.forEach((lbl, i)=>{
+      const d = parseLabel(lbl);
+      if(!d) return;
+      const diff = Math.abs((d.getFullYear()-ey)*12 + (d.getMonth()-(em-1)));
+      if(diff < bestDiff){ bestDiff = diff; bestIdx = i; }
+    });
+    if(bestIdx>=0 && bestDiff<=2){
+      n++;
+      annotations['ev'+n] = {
+        type:'line', xMin:bestIdx, xMax:bestIdx,
+        borderColor: getCssVar('--red'), borderWidth:1.5, borderDash:[4,3],
+        label:{
+          display:true, content:ev.label, position:'start',
+          backgroundColor: getCssVar('--red'), color:'#fff',
+          font:{size:9,weight:'600'}, padding:{x:5,y:2}, borderRadius:4,
+          rotation:0, yAdjust: (n%2===0)? -8 : 8
+        }
+      };
+    }
+  }
+  return annotations;
+}
+
+function renderEventLegend(){
+  const leg = $('event-legend');
+  if(!showEvents){ leg.style.display='none'; return; }
+  leg.style.display='flex';
+  leg.innerHTML = MARKET_EVENTS.map(e=>
+    `<div class="event-chip"><div class="event-dot"></div>${e.label} — ${e.detail}</div>`
+  ).join('');
+}
+
+function makeEvolDatasets(fN, fA, withA){
+  const base=fN[0]?.val||1;
+  const baseA=fA[0]?.val||1;
+  const useN = fN.map(x=>x.val);
+  const useA = fA.map(x=>x.val);
+  const cs = COLORS();
+  const ds=[{
+    label:'Patrimonio Neto',data:useN,
+    borderColor:getCssVar('--green'),backgroundColor:hexToRgba(getCssVar('--green'),0.09),
+    borderWidth:2,fill:true,tension:0.38,pointRadius:0,pointHoverRadius:4
+  }];
+  if(withA) ds.push({
+    label:'Total Activos',data:useA,
+    borderColor:getCssVar('--accent'),backgroundColor:hexToRgba(getCssVar('--accent'),0.05),
+    borderWidth:1.5,borderDash:[5,4],fill:false,tension:0.38,pointRadius:0,pointHoverRadius:4
+  });
+  return {ds, base, baseA};
+}
+function hexToRgba(hex, alpha){
+  hex = hex.trim();
+  if(hex.startsWith('rgb')) return hex; // already rgba/rgb
+  const h = hex.replace('#','');
+  const bigint = parseInt(h.length===3 ? h.split('').map(c=>c+c).join('') : h, 16);
+  const r=(bigint>>16)&255, g=(bigint>>8)&255, b=bigint&255;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function evolOpts(base, withLegend, labels){
+  return {
+    responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{
+      legend:{display:withLegend,labels:{color:axisColor(),font:{size:11},boxWidth:12,padding:14}},
+      tooltip:{...chartTT(),callbacks:{
+        label:ctx=>{
+          if(privacy){
+            const chg=base?((ctx.raw-base)/Math.abs(base)*100):0;
+            return ctx.dataset.label+': '+(chg>=0?'+':'')+chg.toFixed(1).replace('.',',')+' %';
+          }
+          return ctx.dataset.label+': '+Math.round(ctx.raw).toLocaleString('es-ES')+' €';
+        }
+      }},
+      annotation: { annotations: findEventAnnotations(labels) }
+    },
+    scales:{
+      x:{ticks:{color:axisColor(),font:{size:10},maxTicksLimit:9,maxRotation:0},grid:{color:gridColor()}},
+      y:{
+        ticks:{color:axisColor(),font:{size:10},callback:v=>yCallback(v,privacy?base:null)},
+        grid:{color:gridColor()}
+      }
+    }
+  };
+}
+
+function drawEvol(cid, p, withA){
+  const fN=slicePeriod(DATA.sN,p);
+  const fA=slicePeriod(DATA.sA,p);
+  const {ds,base}=makeEvolDatasets(fN,fA,withA);
+  if(CH[cid]) CH[cid].destroy();
+  const labels = fN.map(x=>x.label);
+  CH[cid]=new Chart($(cid).getContext('2d'),{
+    type:'line',data:{labels,datasets:ds},
+    options:{...evolOpts(base,withA,labels)}
+  });
+  if(cid==='ch-evol'){
+    $('evol-sub').textContent=privacy?'Eje en variación % acumulada':'Patrimonio en €';
+    renderEventLegend();
+  }
+}
+
+function drawEvol2(p){
+  const fN=slicePeriod(DATA.sN,p);
+  const fA=slicePeriod(DATA.sA,p);
+  const {ds,base}=makeEvolDatasets(fN,fA,true);
+  if(CH['ch-evol2']) CH['ch-evol2'].destroy();
+  const labels = fN.map(x=>x.label);
+  CH['ch-evol2']=new Chart($('ch-evol2').getContext('2d'),{
+    type:'line',data:{labels,datasets:ds},
+    options:{...evolOpts(base,true,labels)}
+  });
+  $('evol2-sub').textContent=privacy?'Eje en variación % acumulada':'Importes en €';
+}
+
+// ════════════════════════════════════════════════════
+//  CHART: STACKED BAR 100%
+// ════════════════════════════════════════════════════
+function drawStack(data){
+  const cats=['Fondos/ETFs','Acciones','Liquidez','Pensiones','Cripto','Otros'];
+  const pts=data.sA.map((s,i)=>({label:s.label,idx:i,total:s.val})).filter(p=>p.total&&p.total>0);
+  const labels=pts.map(p=>p.label);
+  const cs = COLORS();
+
+  const catVals=cats.map(c=>pts.map(({idx,total})=>{
+    let sum=0;
+    for(const a of data.assets){ if(a.cat!==c) continue; const v=a.series[idx]?.val; if(v&&v>0) sum+=v; }
+    return total>0 ? parseFloat((sum/total*100).toFixed(2)) : 0;
+  }));
+
+  const datasets=cats.map((c,i)=>({
+    label:c,
+    data:catVals[i],
+    backgroundColor: hexToRgba(cs[c]||'#6B7280', 0.82),
+    borderColor: hexToRgba(cs[c]||'#6B7280', 0.3),
+    borderWidth:0.5,
+    stack:'s',
+  }));
+
+  if(CH['ch-stack']) CH['ch-stack'].destroy();
+  CH['ch-stack']=new Chart($('ch-stack').getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{display:true,position:'bottom',labels:{color:getCssVar('--text2'),font:{size:11},boxWidth:12,padding:16}},
+        tooltip:{
+          ...chartTT(),
+          callbacks:{
+            label:ctx=>`${ctx.dataset.label}: ${ctx.raw.toFixed(1).replace('.',',')} %`,
+            footer:items=>{
+              const tot=items.reduce((s,i)=>s+i.raw,0);
+              return 'Total: '+tot.toFixed(1).replace('.',',')+' %';
+            }
+          }
+        }
+      },
+      scales:{
+        x:{
+          stacked:true,
+          ticks:{color:axisColor(),font:{size:10},maxTicksLimit:12,maxRotation:0},
+          grid:{color:gridColor()}
+        },
+        y:{
+          stacked:true,
+          min:0, max:100,
+          ticks:{color:axisColor(),font:{size:10},callback:v=>v+' %',stepSize:20},
+          grid:{color:gridColor()},
+          title:{display:true,text:'% sobre total activos',color:axisColor(),font:{size:10}}
+        }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  CHART: DONUT
+// ════════════════════════════════════════════════════
+function drawDonut(catTotals, total){
+  const cs=Object.keys(catTotals).filter(c=>c!=='Deuda');
+  const vs=cs.map(c=>catTotals[c]);
+  const colorMap = COLORS();
+  const cl=cs.map(c=>colorMap[c]||'#6B7280');
+  if(CH['ch-donut']) CH['ch-donut'].destroy();
+  CH['ch-donut']=new Chart($('ch-donut').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:cs,datasets:[{data:vs,backgroundColor:cl,borderWidth:0,hoverOffset:5}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,cutout:'70%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{...chartTT(),callbacks:{
+          label:ctx=>{
+            const p=((ctx.raw/total)*100).toFixed(1).replace('.',',')+'%';
+            return privacy?`${ctx.label}: ${p}`:
+              `${ctx.label}: ${Math.round(ctx.raw).toLocaleString('es-ES')} € (${p})`;
+          }
+        }}
+      }
+    }
+  });
+  const leg=$('donut-leg'); leg.innerHTML='';
+  cs.forEach((c,i)=>{
+    const p=total>0?((vs[i]/total)*100):0;
+    leg.innerHTML+=`<div class="leg-row">
+      <div class="leg-l"><div class="leg-dot" style="background:${cl[i]}"></div><div class="leg-name">${c}</div></div>
+      <div class="leg-r">
+        <div class="leg-eur pval">${eur(vs[i])}</div>
+        <div class="leg-pct">${p.toFixed(1).replace('.',',')} %</div>
+      </div>
+    </div>`;
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  SPARKLINES — FIXED to use exact 12-month comparison
+// ════════════════════════════════════════════════════
+function drawSparks(data,ni,monthsBack){
+  monthsBack = monthsBack || sparkPeriodMonths;
+  const grid=$('spark-grid'); grid.innerHTML='';
+  const cats=['Fondos/ETFs','Acciones','Liquidez','Pensiones','Cripto'];
+  const colorMap = COLORS();
+
+  // Get value exactly N months back (not N points back) — fixes off-by-one bug
+  const startIdx = idxMonthsBack(data.dates, ni, monthsBack);
+  const indices = [];
+  for(let i=startIdx;i<=ni;i++) indices.push(i);
+
+  cats.forEach(c=>{
+    const series=[];
+    for(const i of indices){
+      let sum=0;
+      for(const a of data.assets){
+        if(a.cat!==c) continue;
+        const v=a.series[i]?.val;
+        if(v&&v>0) sum+=v;
+      }
+      series.push(sum);
+    }
+    const vNow=series[series.length-1]||0;
+    const vStart=series[0]||null; // value exactly `monthsBack` months ago
+    const d=vNow&&vStart?(vNow-vStart)/Math.abs(vStart):null;
+    const dm=delta(d);
+    const cid='sp-'+c.replace(/[^a-z]/gi,'_');
+    const el=document.createElement('div');
+    el.className='spark-card';
+    el.innerHTML=`
+      <div class="spark-head">
+        <div>
+          <div class="spark-cat">${c}</div>
+          <div class="spark-eur pval">${eur(vNow)}</div>
+        </div>
+        <div class="spark-badge phigh ${dm.cls||'neutral'}">${dm.txt}</div>
+      </div>
+      <div style="height:62px"><canvas id="${cid}"></canvas></div>`;
+    grid.appendChild(el);
+    setTimeout(()=>{
+      const cx=document.getElementById(cid)?.getContext('2d'); if(!cx) return;
+      new Chart(cx,{
+        type:'line',
+        data:{labels:series.map((_,i)=>i),datasets:[{data:series,borderColor:colorMap[c]||'#6B7280',borderWidth:2,fill:false,tension:0.35,pointRadius:0}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,
+          plugins:{legend:{display:false},tooltip:{enabled:false}},
+          scales:{x:{display:false},y:{display:false}}}
+      });
+    },60);
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  TABLE: POSICIONES
+// ════════════════════════════════════════════════════
+function drawTable(){
+  if(!DATA) return;
+  const ni=latestIdx(DATA.sN);
+  const tot=DATA.sN[ni]?.val||1;
+  let rows=DATA.assets.map(a=>{
+    const vN=a.series[ni]?.val||0;
+    const vP=ni>0?(a.series[ni-1]?.val||0):0;
+    return {tipo:a.tipo,dep:a.dep,tit:a.tit,cat:a.cat,val:vN,
+      pct:tot>0?vN/Math.abs(tot):0,
+      delta:vN&&vP?(vN-vP)/Math.abs(vP):null};
+  }).filter(r=>r.val>0);
+  if(filterTit!=='TODOS') rows=rows.filter(r=>r.tit===filterTit||(r.tit&&r.tit.toLowerCase().includes(filterTit.toLowerCase())));
+  rows.sort((a,b)=>{
+    const av=sortCol==='dep'?a.dep:sortCol==='tit'?a.tit:a[sortCol]||'';
+    const bv=sortCol==='dep'?b.dep:sortCol==='tit'?b.tit:b[sortCol]||'';
+    return typeof av==='string'?sortDir*av.localeCompare(bv):sortDir*(av-bv);
+  });
+  const byC={}; for(const c of CATS) byC[c]=[];
+  for(const r of rows){ if(!byC[r.cat]) byC[r.cat]=[]; byC[r.cat].push(r); }
+  const tb=$('tb-pos'); tb.innerHTML='';
+  for(const c of CATS){
+    const cr=byC[c]||[]; if(!cr.length) continue;
+    for(const r of cr){
+      const dm=delta(r.delta);
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td><span class="badge ${BADGES[r.cat]||'b-o'}">${r.tipo||r.cat}</span></td>
+        <td style="color:var(--text2)">${r.dep||'—'}</td>
+        <td style="color:var(--text2)">${r.tit||'—'}</td>
+        <td class="mono pval" style="text-align:right">${eur(r.val)}</td>
+        <td class="mono phigh" style="text-align:right">${pct(r.pct)}</td>
+        <td class="mono dcell ${dm.cls}" style="text-align:right">${dm.txt}</td>`;
+      tb.appendChild(tr);
+    }
+    const sub=cr.reduce((s,r)=>s+r.val,0);
+    const sp=tot>0?sub/Math.abs(tot):0;
+    const str=document.createElement('tr');
+    str.className='sub-row';
+    str.innerHTML=`<td colspan="3">Subtotal ${c}</td>
+      <td class="mono pval" style="text-align:right">${eur(sub)}</td>
+      <td class="mono phigh" style="text-align:right">${pct(sp)}</td>
+      <td></td>`;
+    tb.appendChild(str);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  LIQUIDEZ
+// ════════════════════════════════════════════════════
+function drawLiquidez(data,ni){
+  const la=data.assets.filter(a=>a.cat==='Liquidez');
+  const tb=$('tb-liq'); tb.innerHTML=''; let tot=0;
+  for(const a of la){
+    const vN=a.series[ni]?.val||0; if(!vN) continue;
+    const vP=ni>0?(a.series[ni-1]?.val||0):0;
+    const dm=delta(vN&&vP?(vN-vP)/Math.abs(vP):null);
+    tot+=vN;
+    tb.innerHTML+=`<tr>
+      <td style="color:var(--text2)">${a.dep}</td>
+      <td style="color:var(--text2)">${a.tit}</td>
+      <td class="mono pval" style="text-align:right">${eur(vN)}</td>
+      <td class="mono dcell phigh ${dm.cls}" style="text-align:right">${dm.txt}</td>
+    </tr>`;
+  }
+  tb.innerHTML+=`<tr class="sub-row"><td colspan="2">Total Liquidez</td><td class="mono pval" style="text-align:right">${eur(tot)}</td><td></td></tr>`;
+
+  const nPts=Math.min(24,ni+1), ss=ni-nPts+1;
+  const lbls=[],vals=[];
+  for(let i=ss;i<=ni;i++){
+    lbls.push(data.sN[i]?.label||'');
+    let s=0; for(const a of la){ const v=a.series[i]?.val; if(v&&v>0) s+=v; } vals.push(s);
+  }
+  const base=vals[0]||1;
+  const useVals=privacy?vals.map(v=>v!=null?((v-base)/Math.abs(base)*100):null):vals;
+  if(CH['ch-liq']) CH['ch-liq'].destroy();
+  CH['ch-liq']=new Chart($('ch-liq').getContext('2d'),{
+    type:'bar',
+    data:{labels:lbls,datasets:[{
+      label:'Liquidez',data:useVals,
+      backgroundColor:hexToRgba(getCssVar('--amber'),0.35),borderColor:getCssVar('--amber'),borderWidth:1,borderRadius:3
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...chartTT(),callbacks:{
+        label:ctx=>privacy
+          ? 'Variación: '+(ctx.raw>=0?'+':'')+ctx.raw.toFixed(1).replace('.',',')+' %'
+          : 'Liquidez: '+eur(ctx.raw)
+      }}},
+      scales:{
+        x:{ticks:{color:axisColor(),font:{size:9.5},maxTicksLimit:8,maxRotation:0},grid:{color:gridColor()}},
+        y:{
+          ticks:{color:axisColor(),font:{size:9.5},
+            callback:v=>privacy?(v>=0?'+':'')+v.toFixed(1)+' %':(v>=1000?(v/1000).toFixed(0)+'K':v)
+          },
+          grid:{color:gridColor()}
+        }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  SECTION CHARTS: PENSIONES / CRIPTO
+// ════════════════════════════════════════════════════
+function drawSection(sec, data, ni){
+  const c=sec==='pen'?'Pensiones':'Cripto';
+  const cid='ch-'+sec;
+  const assets=data.assets.filter(a=>a.cat===c);
+  if(!assets.length) return;
+
+  const nPts=Math.min(24,ni+1), ss=ni-nPts+1;
+  const lbls=[],vals=[];
+  for(let i=ss;i<=ni;i++){
+    lbls.push(data.sN[i]?.label||'');
+    let s=0; for(const a of assets){ const v=a.series[i]?.val; if(v&&v>0) s+=v; } vals.push(s);
+  }
+  const base=vals[0]||1;
+  const colorMap = COLORS();
+  const col=c==='Pensiones'?colorMap['Pensiones']:colorMap['Cripto'];
+  const useVals=privacy?vals.map(v=>v!=null?((v-base)/Math.abs(base)*100):null):vals;
+
+  if(CH[cid]) CH[cid].destroy();
+  CH[cid]=new Chart($(cid).getContext('2d'),{
+    type:'line',
+    data:{labels:lbls,datasets:[{
+      label:c,data:useVals,
+      borderColor:col,backgroundColor:hexToRgba(col,0.12),
+      borderWidth:2,fill:true,tension:0.38,pointRadius:0,pointHoverRadius:4
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{...chartTT(),callbacks:{
+        label:ctx=>privacy
+          ? c+': '+(ctx.raw>=0?'+':'')+ctx.raw.toFixed(1).replace('.',',')+' %'
+          : c+': '+eur(ctx.raw)
+      }}},
+      scales:{
+        x:{ticks:{color:axisColor(),font:{size:9.5},maxTicksLimit:6,maxRotation:0},grid:{color:gridColor()}},
+        y:{
+          ticks:{color:axisColor(),font:{size:9.5},
+            callback:v=>privacy?(v>=0?'+':'')+v.toFixed(1)+' %':(v>=1000?(v/1000).toFixed(0)+'K':v)
+          },
+          grid:{color:gridColor()}
+        }
+      }
+    }
+  });
+
+  const det=$('det-'+sec); det.innerHTML='';
+  for(const a of assets){
+    const vN=a.series[ni]?.val||0; if(!vN) continue;
+    const vP=ni>0?(a.series[ni-1]?.val||0):0;
+    const dm=delta(vN&&vP?(vN-vP)/Math.abs(vP):null);
+    det.innerHTML+=`<div class="det-row">
+      <div><div class="det-name">${a.dep}</div><div class="det-sub">${a.tit}</div></div>
+      <div style="text-align:right">
+        <div class="mono pval" style="font-size:18px;font-weight:800">${eur(vN)}</div>
+        <div class="mono dcell phigh ${dm.cls}" style="font-size:15px;font-weight:800;margin-top:3px">${dm.txt}</div>
+      </div>
+    </div>`;
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  ACCIONES SECTION
+// ════════════════════════════════════════════════════
+function buildAcciones(){
+  // Compute per-purchase metrics
+  const liveRate = window.LIVE_USD_EUR || USD_EUR_TODAY;
+  const lots = STOCK_PURCHASES.map(p=>{
+    const cur = STOCK_CURRENT[p.ticker];
+    const costEur = p.shares * p.priceUsd * p.fx;
+    const curValueUsd = p.shares * cur.price;
+    const curValueEur = curValueUsd * liveRate;
+    const gainEur = curValueEur - costEur;
+    const gainPct = gainEur / costEur;
+    return {...p, costEur, curValueEur, gainEur, gainPct, name:cur.name};
+  });
+  // VUAA lots (EUR-denominated)
+  const vuaaLots = VUAA_PURCHASES.map(p=>{
+    const costEur = p.shares * p.priceEur;
+    const curValueEur = p.shares * STOCK_CURRENT.VUAA.price;
+    const gainEur = curValueEur - costEur;
+    const gainPct = gainEur / costEur;
+    return {ticker:'VUAA', name:STOCK_CURRENT.VUAA.name, shares:p.shares, priceUsd:p.priceEur,
+      date:p.date, costEur, curValueEur, gainEur, gainPct, isEur:true};
+  });
+  const allLots = [...lots, ...vuaaLots];
+
+  // Consolidate by ticker
+  const byTicker = {};
+  for(const l of allLots){
+    if(!byTicker[l.ticker]) byTicker[l.ticker] = {ticker:l.ticker, name:l.name, shares:0, costEur:0, curValueEur:0, isEur:l.isEur};
+    byTicker[l.ticker].shares += l.shares;
+    byTicker[l.ticker].costEur += l.costEur;
+    byTicker[l.ticker].curValueEur += l.curValueEur;
+  }
+  const tickers = Object.values(byTicker);
+
+  // Totals
+  const totalCost = allLots.reduce((s,l)=>s+l.costEur,0);
+  const totalValue = allLots.reduce((s,l)=>s+l.curValueEur,0);
+  const totalGain = totalValue - totalCost;
+  const totalGainPct = totalGain/totalCost;
+
+  // Daily change (weighted by current value using prevClose)
+  let prevValueTotal = 0;
+  for(const t of tickers){
+    const cur = STOCK_CURRENT[t.ticker];
+    const dailyFactor = cur.prevClose / cur.price;
+    prevValueTotal += t.curValueEur * dailyFactor;
+  }
+  const dailyChangeEur = totalValue - prevValueTotal;
+  const dailyChangePct = dailyChangeEur/prevValueTotal;
+
+  // KPIs
+  $('acc-total-val').textContent = eur(totalValue);
+
+  const dailyD = delta(dailyChangePct);
+  const dailyEurEl = $('acc-daily-eur');
+  dailyEurEl.textContent = (dailyChangeEur>=0?'+':'')+eur(dailyChangeEur);
+  dailyEurEl.className = 'kpi-val pval '+(dailyD.cls||'up');
+  const dailyBadgeEl = $('acc-daily-badge');
+  dailyBadgeEl.textContent = dailyD.txt;
+  dailyBadgeEl.className = 'phigh '+(dailyD.cls||'up');
+
+  const histD = delta(totalGainPct);
+  const histEurEl = $('acc-hist-eur');
+  histEurEl.textContent = (totalGain>=0?'+':'')+eur(totalGain);
+  histEurEl.className = 'kpi-val pval '+(histD.cls||'up');
+  const histBadgeEl = $('acc-hist-badge');
+  histBadgeEl.textContent = histD.txt;
+  histBadgeEl.className = 'phigh '+(histD.cls||'up');
+
+  // Ticker cards
+  const tg = $('ticker-grid'); tg.innerHTML='';
+  tickers.sort((a,b)=>b.curValueEur-a.curValueEur);
+  for(const t of tickers){
+    const cur = STOCK_CURRENT[t.ticker];
+    const dailyFactor = cur.prevClose / cur.price;
+    const prevVal = t.curValueEur * dailyFactor;
+    const dDaily = (t.curValueEur - prevVal)/prevVal;
+    const dHist = (t.curValueEur - t.costEur)/t.costEur;
+    const ddD = delta(dDaily);
+    const dhD = delta(dHist);
+    const priceDisplay = t.isEur ? cur.price.toFixed(2)+' €' : '$'+cur.price.toFixed(2);
+    tg.innerHTML += `
+      <div class="ticker-card">
+        <div class="ticker-top">
+          <div>
+            <div class="ticker-sym">${t.ticker}</div>
+            <div class="ticker-name">${t.name}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="mono" style="font-size:12px;color:var(--muted)">${priceDisplay}</div>
+            <div class="phigh ${ddD.cls}" style="font-size:15px;font-weight:800;margin-top:3px">${ddD.txt}</div>
+          </div>
+        </div>
+        <div class="ticker-val pval">${eur(t.curValueEur)}</div>
+        <div class="det-sub" style="margin-top:2px">${t.shares} acciones</div>
+        <div class="ticker-row">
+          <div class="ticker-metric">
+            <div class="ticker-metric-lbl">Ganancia hoy</div>
+            <div class="ticker-metric-val psub ${ddD.cls}">${(t.curValueEur-prevVal>=0?'+':'')}${eur(t.curValueEur-prevVal)}</div>
+          </div>
+          <div class="ticker-metric" style="text-align:right">
+            <div class="ticker-metric-lbl">Ganancia histórica</div>
+            <div class="ticker-metric-val phigh ${dhD.cls}">${dhD.txt}</div>
+            <div class="ticker-metric-val ${dhD.cls}" style="font-size:12px;margin-top:2px">${(t.curValueEur-t.costEur>=0?'+':'')}${eur(t.curValueEur-t.costEur)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Lots table
+  const tb = $('tb-acciones'); tb.innerHTML='';
+  allLots.sort((a,b)=> new Date(b.date) - new Date(a.date));
+  for(const l of allLots){
+    const dG = delta(l.gainPct);
+    const priceTxt = l.isEur ? l.priceUsd.toFixed(3)+' €' : '$'+l.priceUsd.toFixed(2);
+    tb.innerHTML += `<tr>
+      <td><span class="badge b-a">${l.ticker}</span></td>
+      <td style="color:var(--text2)">${formatDateEs(l.date)}</td>
+      <td class="mono" style="text-align:right">${l.shares}</td>
+      <td class="mono" style="text-align:right;color:var(--text2)">${priceTxt}</td>
+      <td class="mono pval" style="text-align:right">${eur(l.costEur)}</td>
+      <td class="mono pval" style="text-align:right">${eur(l.curValueEur)}</td>
+      <td class="mono pval dcell ${dG.cls}" style="text-align:right">${(l.gainEur>=0?'+':'')}${eur(l.gainEur)}</td>
+      <td class="mono phigh ${dG.cls}" style="text-align:right">${dG.txt}</td>
+    </tr>`;
+  }
+}
+function formatDateEs(iso){
+  const [y,m,d] = iso.split('-');
+  const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${parseInt(d)} ${meses[parseInt(m)-1]} ${y}`;
+}
+
+// ════════════════════════════════════════════════════
+//  PRIVACY TOGGLE
+// ════════════════════════════════════════════════════
+function applyPrivacy(){
+  const sw=$('sw'), banner=$('priv-banner');
+  if(privacy){
+    document.body.classList.add('privacy');
+    sw.classList.add('on'); banner.classList.add('show');
+  } else {
+    document.body.classList.remove('privacy');
+    sw.classList.remove('on'); banner.classList.remove('show');
+  }
+  if(!DATA) return;
+  const ni=latestIdx(DATA.sN);
+  drawEvol('ch-evol',period1,showActivos);
+  drawEvol2(period2);
+  drawLiquidez(DATA,ni);
+  drawSection('pen',DATA,ni);
+  drawSection('cri',DATA,ni);
+  const ct={}; for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
+  const aNow=DATA.sA[ni]?.val||DATA.sN[ni]?.val||1;
+  drawDonut(ct,aNow);
+}
+
+// ════════════════════════════════════════════════════
+//  THEME TOGGLE
+// ════════════════════════════════════════════════════
+function applyTheme(){
+  document.body.classList.toggle('theme-light', theme==='light');
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.theme===theme);
+  });
+  if(!DATA) return;
+  // Rebuild all charts with new theme colors
+  const ni=latestIdx(DATA.sN);
+  drawEvol('ch-evol',period1,showActivos);
+  drawEvol2(period2);
+  drawStack(DATA);
+  drawLiquidez(DATA,ni);
+  drawSection('pen',DATA,ni);
+  drawSection('cri',DATA,ni);
+  const ct={}; for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
+  const aNow=DATA.sA[ni]?.val||DATA.sN[ni]?.val||1;
+  drawDonut(ct,aNow);
+  drawSparks(DATA,ni);
+}
+
+// ════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════
+function navigate(sec) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('[data-sec]').forEach(n=>n.classList.remove('active'));
+  const s=$('s-'+sec);
+  if (s) s.classList.add('active');
+  document.querySelectorAll(`[data-sec="${sec}"]`).forEach(n=>n.classList.add('active'));
+}
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  document.body.classList.toggle('theme-light', theme==='light');
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.toggle('active', b.dataset.theme===theme));
+  applyPrivacy();
+  build();
+  applyTheme(); // ensures all charts render with correct theme colors now that DATA exists
+
+  // Auto-fetch live prices on load; falls back silently to static prices if offline/blocked
+  refreshLivePrices().catch(err=>{
+    console.warn('Live price fetch failed, using static fallback:', err);
+    const statusEl = $('price-status');
+    if(statusEl){ statusEl.textContent = '✗ Sin conexión · usando precios estáticos (30 jun 2026)'; statusEl.style.color = 'var(--red)'; }
+  });
+
+  $('btn-refresh-prices').addEventListener('click', ()=>{
+    refreshLivePrices().catch(err=>{
+      console.warn('Manual refresh failed:', err);
+      const statusEl = $('price-status');
+      if(statusEl){ statusEl.textContent = '✗ Error al actualizar · reintenta'; statusEl.style.color = 'var(--red)'; }
+    });
+  });
+
+  $('priv-toggle').addEventListener('click',()=>{
+    privacy=!privacy;
+    localStorage.setItem('priv',privacy?'1':'0');
+    applyPrivacy();
+  });
+
+  document.querySelectorAll('.theme-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      theme = btn.dataset.theme;
+      localStorage.setItem('theme', theme);
+      applyTheme();
+    });
+  });
+
+  document.querySelectorAll('[data-sec]').forEach(b=>{
+    b.addEventListener('click',()=>navigate(b.dataset.sec));
+  });
+
+  document.querySelectorAll('.pbtn[data-p]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.pbtn[data-p]').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); period1=b.dataset.p;
+      if(DATA) drawEvol('ch-evol',period1,showActivos);
+    });
+  });
+
+  document.querySelectorAll('.pbtn[data-p2]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.pbtn[data-p2]').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); period2=b.dataset.p2;
+      if(DATA) drawEvol2(period2);
+    });
+  });
+
+  $('btn-activos').addEventListener('click',function(){
+    showActivos=!showActivos;
+    this.classList.toggle('active',showActivos);
+    if(DATA) drawEvol('ch-evol',period1,showActivos);
+  });
+
+  $('btn-events').addEventListener('click',function(){
+    showEvents=!showEvents;
+    this.classList.toggle('active',showEvents);
+    if(DATA) drawEvol('ch-evol',period1,showActivos);
+  });
+
+  document.querySelectorAll('thead th[data-col]').forEach(th=>{
+    th.addEventListener('click',()=>{
+      if(sortCol===th.dataset.col) sortDir*=-1;
+      else{sortCol=th.dataset.col;sortDir=-1;}
+      drawTable();
+    });
+  });
+
+  document.querySelectorAll('.pbtn[data-spark-p]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.pbtn[data-spark-p]').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const map = {'1M':1,'3M':3,'6M':6,'12M':12};
+      sparkPeriodMonths = map[b.dataset.sparkP];
+      const labels = {'1M':'último mes','3M':'últimos 3 meses','6M':'últimos 6 meses','12M':'últimos 12 meses'};
+      $('spark-title').textContent = 'Rendimiento por categoría — ' + labels[b.dataset.sparkP];
+      if(DATA){ const ni=latestIdx(DATA.sN); drawSparks(DATA,ni,sparkPeriodMonths); }
+    });
+  });
+
+  document.querySelectorAll('.pbtn[data-tit]').forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll('.pbtn[data-tit]').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); filterTit=b.dataset.tit;
+      drawTable();
+    });
+  });
+});
+</script>
