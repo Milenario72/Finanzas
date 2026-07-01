@@ -258,7 +258,6 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
   .mob-item{flex:1;min-width:14%;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--muted);font-size:9px;font-weight:600}
   .mob-item.active{color:var(--green)}
   .mob-ico{font-size:16px}
-  /* Mobile controls row at bottom */
   #mob-controls{display:flex;align-items:center;justify-content:space-between;width:100%;padding:6px 12px 2px;border-top:1px solid var(--border);margin-top:4px}
   .mob-theme-toggle{display:flex;background:var(--card2);border-radius:6px;padding:2px;gap:2px}
   .mob-theme-btn{padding:4px 8px;border-radius:5px;cursor:pointer;font-size:10px;font-weight:600;color:var(--muted);border:none;background:none}
@@ -266,25 +265,36 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
   .mob-priv-btn{display:flex;align-items:center;gap:5px;cursor:pointer;font-size:10px;font-weight:600;color:var(--muted);border:none;background:none;padding:4px 8px;border-radius:6px;border:1px solid var(--border)}
   .mob-priv-btn.on{color:var(--green);border-color:var(--green);background:rgba(0,212,138,.08)}
   #main{padding-bottom:100px}
-  /* Smaller KPIs on mobile */
+  /* KPIs */
   .kpi-grid{grid-template-columns:repeat(2,1fr)}
   .kpi-val{font-size:20px}
-  .kpi-badge{font-size:15px;padding:3px 8px}
+  .kpi-badge{font-size:14px;padding:3px 8px}
   .kpi-lbl{font-size:10px}
   .kpi-sub{font-size:11px}
-  /* Smaller acciones ticker cards */
-  .ticker-grid{grid-template-columns:repeat(2,1fr)}
-  .ticker-val{font-size:17px}
-  .ticker-sym{font-size:13px}
-  .ticker-metric-val{font-size:13px}
-  /* Smaller charts layouts */
-  .g2,.g11{grid-template-columns:1fr}
+  /* Spark / rentabilidad cards — clave: layout vertical, fuentes reducidas */
   .g3{grid-template-columns:repeat(2,1fr)}
+  .spark-card{padding:13px}
+  .spark-eur{font-size:15px !important}
+  .spark-cat{font-size:10px}
+  .spark-badge{font-size:12px !important;padding:3px 7px !important}
+  .spark-head{flex-direction:column;gap:6px;align-items:flex-start}
+  .spark-head > div:last-child{align-self:flex-start}
+  /* Acciones ticker cards */
+  .ticker-grid{grid-template-columns:repeat(2,1fr)}
+  .ticker-val{font-size:15px}
+  .ticker-sym{font-size:12px}
+  .ticker-metric-val{font-size:12px}
+  .ticker-card{padding:13px}
+  /* Layouts */
+  .g2,.g11{grid-template-columns:1fr}
   .g6{grid-template-columns:repeat(3,1fr)}
-  /* Smaller sec title */
   .sec-title{font-size:16px}
-  /* Table horizontal scroll */
   .tbl-wrap{font-size:11px}
+  /* En pantallas muy pequeñas (<375px) una sola columna para sparks */
+}
+@media(max-width:374px){
+  .g3{grid-template-columns:1fr}
+  .ticker-grid{grid-template-columns:1fr}
 }
 @media(min-width:769px){#mob-nav{display:none}}
 </style>
@@ -405,15 +415,17 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
       </div>
 
       <div class="sep" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
-        <span id="spark-title">Rendimiento por categoría — últimos 12 meses</span>
+        <span id="spark-title">Rentabilidad por categoría — histórico desde inicio</span>
         <div class="chart-actions">
-          <button class="pbtn" data-spark-p="1M">1M</button>
-          <button class="pbtn" data-spark-p="3M">3M</button>
+          <button class="pbtn active" data-spark-p="HIST">Histórico</button>
+          <button class="pbtn" data-spark-p="12M">12M</button>
           <button class="pbtn" data-spark-p="6M">6M</button>
-          <button class="pbtn active" data-spark-p="12M">12M</button>
+          <button class="pbtn" data-spark-p="3M">3M</button>
+          <button class="pbtn" data-spark-p="1M">1M</button>
         </div>
       </div>
       <div class="g3" id="spark-grid"></div>
+
     </div>
 
     <!-- INVERSIONES -->
@@ -473,7 +485,7 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
           </div>
         </div>
         <div class="kpi">
-          <div class="kpi-lbl">Ganancia histórica</div>
+          <div class="kpi-lbl">Rentabilidad desde inicio</div>
           <div class="kpi-val pval" id="acc-hist-eur">—</div>
           <div class="kpi-sub" style="display:flex;align-items:center;gap:6px">
             <span id="acc-hist-badge" class="phigh">—</span>
@@ -494,8 +506,8 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
               <th style="text-align:right">Precio compra</th>
               <th style="text-align:right">Coste €</th>
               <th style="text-align:right">Valor actual €</th>
-              <th style="text-align:right">Ganancia €</th>
-              <th style="text-align:right">Ganancia %</th>
+              <th style="text-align:right">Rentabilidad €</th>
+              <th style="text-align:right">Rentabilidad %</th>
             </tr></thead>
             <tbody id="tb-acciones"></tbody>
           </table>
@@ -751,7 +763,7 @@ let filterTit = 'TODOS';
 let showActivos = false;
 let showEvents = false;
 let period1 = 'TODO', period2 = 'TODO';
-let sparkPeriodMonths = 12;
+let sparkPeriodMonths = 'HIST'; // default: historical view
 let privacy = localStorage.getItem('priv') === '1';
 let theme = localStorage.getItem('theme') || 'dark';
 
@@ -1012,7 +1024,7 @@ function build(){
 
   drawEvol('ch-evol',period1,showActivos);
   drawDonut(ct,aNow);
-  drawSparks(DATA,ni);
+  drawSparksByMode(DATA,ni);
   drawTable();
   drawLiquidez(DATA,ni);
   drawEvol2(period2);
@@ -1250,7 +1262,19 @@ function drawDonut(catTotals, total){
 }
 
 // ════════════════════════════════════════════════════
-//  SPARKLINES — FIXED to use exact 12-month comparison
+//  SPARK MODE DISPATCHER
+// ════════════════════════════════════════════════════
+function drawSparksByMode(data, ni, mode){
+  mode = mode || sparkPeriodMonths;
+  if(mode === 'HIST'){
+    drawHistReturns(data, ni);
+  } else {
+    drawSparks(data, ni, mode);
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  SPARKLINES — period-based (1M/3M/6M/12M)
 // ════════════════════════════════════════════════════
 function drawSparks(data,ni,monthsBack){
   monthsBack = monthsBack || sparkPeriodMonths;
@@ -1307,6 +1331,105 @@ function drawSparks(data,ni,monthsBack){
 // ════════════════════════════════════════════════════
 //  TABLE: POSICIONES
 // ════════════════════════════════════════════════════
+function drawHistReturns(data, ni){
+  const grid = $('spark-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+
+  const cats = ['Fondos/ETFs','Acciones','Liquidez','Pensiones','Cripto'];
+  const colorMap = COLORS();
+
+  cats.forEach(c => {
+    // Sum all assets in this category across all periods (from TOTAL ACTIVOS data)
+    const catAssets = data.assets.filter(a => a.cat === c);
+    if(!catAssets.length) return;
+
+    // Current value
+    let valNow = 0;
+    for(const a of catAssets){
+      const v = a.series[ni]?.val;
+      if(v && v > 0) valNow += v;
+    }
+    if(!valNow) return;
+
+    // First period with any value > 0 for this category
+    let firstVal = null, firstLbl = null, firstIdx = 0;
+    for(let i = 0; i < data.dates.length; i++){
+      let s = 0;
+      for(const a of catAssets){ const v = a.series[i]?.val; if(v && v > 0) s += v; }
+      if(s > 0){ firstVal = s; firstLbl = data.dates[i]; firstIdx = i; break; }
+    }
+    if(!firstVal) return;
+
+    const ret = (valNow - firstVal) / firstVal;
+    const absRent = valNow - firstVal;
+    const dm = delta(ret);
+    const color = colorMap[c] || '#6B7280';
+
+    // Full history series for sparkline
+    const series = [];
+    for(let i = firstIdx; i <= ni; i++){
+      let s = 0;
+      for(const a of catAssets){ const v = a.series[i]?.val; if(v && v > 0) s += v; }
+      series.push(s);
+    }
+    const yearsHeld = ((ni - firstIdx) / 12).toFixed(1);
+    const cid = `hist-${c.replace(/[^a-z]/gi,'_')}`;
+
+    const card = document.createElement('div');
+    card.className = 'spark-card';
+    card.style.cssText = 'padding:20px';
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;gap:8px;flex-wrap:wrap">
+        <div style="min-width:0;flex:1">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <div class="spark-cat">${c}</div>
+          </div>
+          <div class="spark-eur pval" style="font-size:clamp(14px,3.5vw,20px)">${eur(valNow)}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            desde <strong>${firstLbl}</strong>: <span class="pval">${eur(firstVal)}</span>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div class="spark-badge phigh ${dm.cls}" style="font-size:clamp(12px,3vw,16px);padding:4px 9px;white-space:nowrap">${dm.txt}</div>
+          <div class="pval ${dm.cls}" style="font-size:clamp(11px,2.5vw,13px);font-weight:700;margin-top:5px;white-space:nowrap">
+            ${absRent>=0?'+':''}${eur(absRent)}
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${yearsHeld} años</div>
+        </div>
+      </div>
+      <div style="height:48px;margin-top:10px"><canvas id="${cid}"></canvas></div>`;
+    grid.appendChild(card);
+
+    setTimeout(() => {
+      const ctx = document.getElementById(cid)?.getContext('2d');
+      if(!ctx) return;
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: series.map((_,i)=>i),
+          datasets: [{
+            data: series,
+            borderColor: color,
+            backgroundColor: color + '18',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.35,
+            pointRadius: 0,
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, animation: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } }
+        }
+      });
+    }, 80);
+  });
+}
+
+
 function drawTable(){
   if(!DATA) return;
   const ni=latestIdx(DATA.sN);
@@ -1558,11 +1681,11 @@ function buildAcciones(){
         <div class="det-sub pval" style="margin-top:2px">${t.shares} acciones · coste ${eur(t.costEur)}</div>
         <div class="ticker-row">
           <div class="ticker-metric">
-            <div class="ticker-metric-lbl">Ganancia hoy</div>
+            <div class="ticker-metric-lbl">Rentabilidad diaria</div>
             <div class="ticker-metric-val psub ${ddD.cls}">${(t.curValueEur-prevVal>=0?'+':'')}${eur(t.curValueEur-prevVal)}</div>
           </div>
           <div class="ticker-metric" style="text-align:right">
-            <div class="ticker-metric-lbl">Ganancia histórica</div>
+            <div class="ticker-metric-lbl">Rentabilidad desde inicio</div>
             <div class="ticker-metric-val phigh ${dhD.cls}">${dhD.txt}</div>
             <div class="ticker-metric-val pval ${dhD.cls}" style="font-size:12px;margin-top:2px">${(gainAbs>=0?'+':'')}${eur(gainAbs)}</div>
           </div>
@@ -1661,7 +1784,7 @@ function applyTheme(){
   const ct={}; for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
   const aNow=DATA.sA[ni]?.val||DATA.sN[ni]?.val||1;
   drawDonut(ct,aNow);
-  drawSparks(DATA,ni);
+  drawSparksByMode(DATA,ni);
 }
 
 // ════════════════════════════════════════════════════
@@ -1787,11 +1910,15 @@ document.addEventListener('DOMContentLoaded',()=>{
     b.addEventListener('click',()=>{
       document.querySelectorAll('.pbtn[data-spark-p]').forEach(x=>x.classList.remove('active'));
       b.classList.add('active');
-      const map = {'1M':1,'3M':3,'6M':6,'12M':12};
+      const map = {'1M':1,'3M':3,'6M':6,'12M':12,'HIST':'HIST'};
       sparkPeriodMonths = map[b.dataset.sparkP];
-      const labels = {'1M':'último mes','3M':'últimos 3 meses','6M':'últimos 6 meses','12M':'últimos 12 meses'};
-      $('spark-title').textContent = 'Rendimiento por categoría — ' + labels[b.dataset.sparkP];
-      if(DATA){ const ni=latestIdx(DATA.sN); drawSparks(DATA,ni,sparkPeriodMonths); }
+      const labels = {
+        '1M':'último mes','3M':'últimos 3 meses',
+        '6M':'últimos 6 meses','12M':'últimos 12 meses',
+        'HIST':'histórico desde inicio'
+      };
+      $('spark-title').textContent = 'Rentabilidad por categoría — ' + labels[b.dataset.sparkP];
+      if(DATA){ const ni=latestIdx(DATA.sN); drawSparksByMode(DATA,ni,sparkPeriodMonths); }
     });
   });
 
