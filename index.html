@@ -380,7 +380,7 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
           </div>
         </div>
         <div class="kpi">
-          <div class="kpi-lbl">Rentabilidad total desde 2019</div>
+          <div class="kpi-lbl">Variación desde inicio</div>
           <div id="k-ret-badge" class="kpi-badge up phigh">—</div>
           <div class="kpi-sub psub" id="k-ret-sub">—</div>
         </div>
@@ -406,7 +406,7 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
           <div class="event-legend" id="event-legend" style="display:none"></div>
         </div>
         <div class="cc">
-          <div class="cc-head"><div class="cc-title">Allocation actual</div></div>
+          <div class="cc-head"><div class="cc-title">Distribución por tipo de activo</div></div>
           <div class="donut-wrap">
             <div style="height:185px"><canvas id="ch-donut"></canvas></div>
             <div class="donut-leg" id="donut-leg"></div>
@@ -417,7 +417,8 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
       <div class="sep" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <span id="spark-title">Rentabilidad por categoría — histórico desde inicio</span>
         <div class="chart-actions">
-          <button class="pbtn active" data-spark-p="HIST">Histórico</button>
+          <button class="pbtn active" data-spark-p="HIST">Desde inicio</button>
+          <button class="pbtn" data-spark-p="YTD">Año natural</button>
           <button class="pbtn" data-spark-p="12M">12M</button>
           <button class="pbtn" data-spark-p="6M">6M</button>
           <button class="pbtn" data-spark-p="3M">3M</button>
@@ -570,13 +571,23 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
     <!-- PENSIONES -->
     <div class="section" id="s-pensiones">
       <div class="sec-title">Planes de pensiones</div>
+      <div class="chart-actions" style="margin-bottom:16px">
+        <button class="pbtn active" data-sec-p="pen" data-sec-v="HIST">Desde inicio</button>
+        <button class="pbtn" data-sec-p="pen" data-sec-v="YTD">Año natural</button>
+        <button class="pbtn" data-sec-p="pen" data-sec-v="12M">12M</button>
+        <button class="pbtn" data-sec-p="pen" data-sec-v="9M">9M</button>
+        <button class="pbtn" data-sec-p="pen" data-sec-v="6M">6M</button>
+        <button class="pbtn" data-sec-p="pen" data-sec-v="3M">3M</button>
+        <button class="pbtn" data-sec-p="pen" data-sec-v="1M">1M</button>
+      </div>
       <div class="g11">
         <div class="cc">
           <div class="cc-head"><div class="cc-title">Evolución</div></div>
           <div style="height:220px"><canvas id="ch-pen"></canvas></div>
         </div>
         <div class="card">
-          <div style="font-size:13.5px;font-weight:700;margin-bottom:16px">Detalle planes</div>
+          <div id="kpi-pen"></div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Detalle planes</div>
           <div id="det-pen"></div>
         </div>
       </div>
@@ -585,13 +596,23 @@ body.privacy td.dcell{font-weight:700;text-shadow:0 0 7px currentColor}
     <!-- CRIPTO -->
     <div class="section" id="s-cripto">
       <div class="sec-title">Criptomonedas</div>
+      <div class="chart-actions" style="margin-bottom:16px">
+        <button class="pbtn active" data-sec-p="cri" data-sec-v="HIST">Desde inicio</button>
+        <button class="pbtn" data-sec-p="cri" data-sec-v="YTD">Año natural</button>
+        <button class="pbtn" data-sec-p="cri" data-sec-v="12M">12M</button>
+        <button class="pbtn" data-sec-p="cri" data-sec-v="9M">9M</button>
+        <button class="pbtn" data-sec-p="cri" data-sec-v="6M">6M</button>
+        <button class="pbtn" data-sec-p="cri" data-sec-v="3M">3M</button>
+        <button class="pbtn" data-sec-p="cri" data-sec-v="1M">1M</button>
+      </div>
       <div class="g11">
         <div class="cc">
           <div class="cc-head"><div class="cc-title">Evolución</div></div>
           <div style="height:220px"><canvas id="ch-cri"></canvas></div>
         </div>
         <div class="card">
-          <div style="font-size:13.5px;font-weight:700;margin-bottom:16px">Detalle posiciones</div>
+          <div id="kpi-cri"></div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:12px">Detalle posiciones</div>
           <div id="det-cri"></div>
         </div>
       </div>
@@ -1029,8 +1050,8 @@ function build(){
   drawLiquidez(DATA,ni);
   drawEvol2(period2);
   drawStack(DATA);
-  drawSection('pen',DATA,ni);
-  drawSection('cri',DATA,ni);
+  drawSection('pen',DATA,ni,'HIST');
+  drawSection('cri',DATA,ni,'HIST');
   buildAcciones();
 }
 
@@ -1266,26 +1287,40 @@ function drawDonut(catTotals, total){
 // ════════════════════════════════════════════════════
 function drawSparksByMode(data, ni, mode){
   mode = mode || sparkPeriodMonths;
-  if(mode === 'HIST'){
-    drawHistReturns(data, ni);
-  } else {
-    drawSparks(data, ni, mode);
-  }
+  if(mode === 'HIST') drawHistReturns(data, ni);
+  else if(mode === 'YTD') drawSparksYTD(data, ni);
+  else drawSparks(data, ni, mode);
 }
 
-// ════════════════════════════════════════════════════
-//  SPARKLINES — period-based (1M/3M/6M/12M)
-// ════════════════════════════════════════════════════
-function drawSparks(data,ni,monthsBack){
-  monthsBack = monthsBack || sparkPeriodMonths;
-  const grid=$('spark-grid'); grid.innerHTML='';
-  const cats=['Fondos/ETFs','Acciones','Liquidez','Pensiones','Cripto'];
-  const colorMap = COLORS();
+function idxYTD(dates){
+  const yr = String(new Date().getFullYear()).slice(-2);
+  const i = dates.findIndex(d=>d.toUpperCase().includes("ENE'"+yr));
+  if(i>=0) return i;
+  const target = new Date(new Date().getFullYear(),0,1);
+  return dates.reduce((best,lbl,i)=>{
+    const d=parseLabel(lbl); if(!d) return best;
+    const pb=parseLabel(dates[best]);
+    return Math.abs(d-target)<Math.abs(pb-target)?i:best;
+  },0);
+}
 
-  // Get value exactly N months back (not N points back) — fixes off-by-one bug
+function drawSparksYTD(data, ni){
+  const startIdx = idxYTD(data.dates);
+  drawSparksFromTo(data, ni, startIdx);
+}
+
+function drawSparks(data, ni, monthsBack){
+  monthsBack = monthsBack || sparkPeriodMonths;
   const startIdx = idxMonthsBack(data.dates, ni, monthsBack);
+  drawSparksFromTo(data, ni, startIdx);
+}
+
+function drawSparksFromTo(data, ni, startIdx){
+  const grid = $('spark-grid'); grid.innerHTML='';
+  const cats = ['Fondos/ETFs','Acciones','Liquidez','Pensiones','Cripto'];
+  const colorMap = COLORS();
   const indices = [];
-  for(let i=startIdx;i<=ni;i++) indices.push(i);
+  for(let i=startIdx; i<=ni; i++) indices.push(i);
 
   cats.forEach(c=>{
     const series=[];
@@ -1299,21 +1334,29 @@ function drawSparks(data,ni,monthsBack){
       series.push(sum);
     }
     const vNow=series[series.length-1]||0;
-    const vStart=series[0]||null; // value exactly `monthsBack` months ago
+    const vStart=series[0]||null;
     const d=vNow&&vStart?(vNow-vStart)/Math.abs(vStart):null;
+    const absChg=vNow&&vStart?vNow-vStart:null;
     const dm=delta(d);
     const cid='sp-'+c.replace(/[^a-z]/gi,'_');
+    const startLbl = data.dates[startIdx];
     const el=document.createElement('div');
     el.className='spark-card';
     el.innerHTML=`
-      <div class="spark-head">
-        <div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px;flex-wrap:wrap;margin-bottom:6px">
+        <div style="min-width:0">
           <div class="spark-cat">${c}</div>
-          <div class="spark-eur pval">${eur(vNow)}</div>
+          <div class="spark-eur pval" style="font-size:clamp(13px,3.5vw,19px)">${eur(vNow)}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">desde ${startLbl}: <span class="pval">${eur(vStart)}</span></div>
         </div>
-        <div class="spark-badge phigh ${dm.cls||'neutral'}">${dm.txt}</div>
+        <div style="text-align:right;flex-shrink:0">
+          <div class="spark-badge phigh ${dm.cls||'neutral'}" style="font-size:clamp(11px,3vw,15px)">${dm.txt}</div>
+          <div class="pval ${dm.cls||''}" style="font-size:clamp(10px,2.5vw,12px);font-weight:700;margin-top:4px;white-space:nowrap">
+            ${absChg!==null?(absChg>=0?'+':'')+eur(absChg):'—'}
+          </div>
+        </div>
       </div>
-      <div style="height:62px"><canvas id="${cid}"></canvas></div>`;
+      <div style="height:52px"><canvas id="${cid}"></canvas></div>`;
     grid.appendChild(el);
     setTimeout(()=>{
       const cx=document.getElementById(cid)?.getContext('2d'); if(!cx) return;
@@ -1533,29 +1576,48 @@ function drawLiquidez(data,ni){
 // ════════════════════════════════════════════════════
 //  SECTION CHARTS: PENSIONES / CRIPTO
 // ════════════════════════════════════════════════════
-function drawSection(sec, data, ni){
-  const c=sec==='pen'?'Pensiones':'Cripto';
-  const cid='ch-'+sec;
-  const assets=data.assets.filter(a=>a.cat===c);
+function drawSection(sec, data, ni, periodMode){
+  const c = sec==='pen' ? 'Pensiones' : 'Cripto';
+  const cid = 'ch-'+sec;
+  const assets = data.assets.filter(a=>a.cat===c);
   if(!assets.length) return;
 
-  const nPts=Math.min(24,ni+1), ss=ni-nPts+1;
-  const lbls=[],vals=[];
-  for(let i=ss;i<=ni;i++){
-    lbls.push(data.sN[i]?.label||'');
+  // Resolve start index based on period mode
+  periodMode = periodMode || 'HIST';
+  let startIdx;
+  if(periodMode==='HIST'){
+    // first non-zero period for this category
+    startIdx = 0;
+    for(let i=0;i<data.dates.length;i++){
+      const s = assets.reduce((sum,a)=>{ const v=a.series[i]?.val; return sum+(v&&v>0?v:0); },0);
+      if(s>0){ startIdx=i; break; }
+    }
+  } else if(periodMode==='YTD'){
+    startIdx = idxYTD(data.dates);
+  } else {
+    startIdx = idxMonthsBack(data.dates, ni, periodMode);
+  }
+
+  // Build series from startIdx to ni
+  const lbls=[], vals=[];
+  for(let i=startIdx;i<=ni;i++){
+    lbls.push(data.dates[i]);
     let s=0; for(const a of assets){ const v=a.series[i]?.val; if(v&&v>0) s+=v; } vals.push(s);
   }
-  const base=vals[0]||1;
-  const colorMap = COLORS();
-  const col=c==='Pensiones'?colorMap['Pensiones']:colorMap['Cripto'];
-  const useVals=privacy?vals.map(v=>v!=null?((v-base)/Math.abs(base)*100):null):vals;
+  const valNow = vals[vals.length-1]||0;
+  const valStart = vals[0]||0;
+  const ret = valStart ? (valNow-valStart)/valStart : null;
+  const absChg = valStart ? valNow-valStart : null;
+  const dm = delta(ret);
+  const color = c==='Pensiones'?'#22D3EE':'#F97316';
+  const useVals = privacy ? vals.map(v=>v!=null?((v-valStart)/Math.abs(valStart||1)*100):null) : vals;
 
   if(CH[cid]) CH[cid].destroy();
   CH[cid]=new Chart($(cid).getContext('2d'),{
     type:'line',
     data:{labels:lbls,datasets:[{
       label:c,data:useVals,
-      borderColor:col,backgroundColor:hexToRgba(col,0.12),
+      borderColor:color,backgroundColor:color+'18',
       borderWidth:2,fill:true,tension:0.38,pointRadius:0,pointHoverRadius:4
     }]},
     options:{
@@ -1567,34 +1629,63 @@ function drawSection(sec, data, ni){
       }}},
       scales:{
         x:{ticks:{color:axisColor(),font:{size:9.5},maxTicksLimit:6,maxRotation:0},grid:{color:gridColor()}},
-        y:{
-          ticks:{color:axisColor(),font:{size:9.5},
+        y:{ticks:{color:axisColor(),font:{size:9.5},
             callback:v=>privacy?(v>=0?'+':'')+v.toFixed(1)+' %':(v>=1000?(v/1000).toFixed(0)+'K':v)
-          },
-          grid:{color:gridColor()}
-        }
+          },grid:{color:gridColor()}}
       }
     }
   });
 
+  // Section summary KPI bar
+  const kpiEl = $('kpi-'+sec);
+  if(kpiEl){
+    kpiEl.innerHTML = `
+      <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Valor actual</div>
+          <div class="mono pval" style="font-size:18px;font-weight:800">${eur(valNow)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Variación período</div>
+          <div class="phigh ${dm.cls}" style="font-size:16px;font-weight:800">${dm.txt}</div>
+          <div class="pval ${dm.cls}" style="font-size:12px;font-weight:700;margin-top:2px">${absChg!==null?(absChg>=0?'+':'')+eur(absChg):'—'}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px">Desde</div>
+          <div style="font-size:12px;color:var(--text2)">${data.dates[startIdx]} · <span class="pval">${eur(valStart)}</span></div>
+        </div>
+      </div>`;
+  }
+
+  // Detail rows
   const det=$('det-'+sec); det.innerHTML='';
   for(const a of assets){
     const vN=a.series[ni]?.val||0; if(!vN) continue;
     const vP=ni>0?(a.series[ni-1]?.val||0):0;
-    const dm=delta(vN&&vP?(vN-vP)/Math.abs(vP):null);
+    const dm2=delta(vN&&vP?(vN-vP)/Math.abs(vP):null);
     det.innerHTML+=`<div class="det-row">
       <div><div class="det-name">${a.dep}</div><div class="det-sub">${a.tit}</div></div>
       <div style="text-align:right">
-        <div class="mono pval" style="font-size:18px;font-weight:800">${eur(vN)}</div>
-        <div class="mono dcell phigh ${dm.cls}" style="font-size:15px;font-weight:800;margin-top:3px">${dm.txt}</div>
+        <div class="mono pval" style="font-size:15px;font-weight:800">${eur(vN)}</div>
+        <div class="mono dcell phigh ${dm2.cls}" style="font-size:12px;margin-top:3px">${dm2.txt}</div>
       </div>
     </div>`;
   }
 }
 
-// ════════════════════════════════════════════════════
-//  ACCIONES SECTION
-// ════════════════════════════════════════════════════
+// Period selector helper for section charts
+function initSectionPeriodBtns(sec, data, ni){
+  document.querySelectorAll(`.pbtn[data-sec-p="${sec}"]`).forEach(b=>{
+    b.addEventListener('click',()=>{
+      document.querySelectorAll(`.pbtn[data-sec-p="${sec}"]`).forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      const map={'1M':1,'3M':3,'6M':6,'9M':9,'12M':12,'YTD':'YTD','HIST':'HIST'};
+      drawSection(sec,DATA,latestIdx(DATA.sN),map[b.dataset.secV]);
+    });
+  });
+}
+
+
 function buildAcciones(){
   const liveRate = window.LIVE_USD_EUR || USD_EUR_TODAY;
 
@@ -1754,8 +1845,8 @@ function applyPrivacy(){
   drawEvol('ch-evol',period1,showActivos);
   drawEvol2(period2);
   drawLiquidez(DATA,ni);
-  drawSection('pen',DATA,ni);
-  drawSection('cri',DATA,ni);
+  drawSection('pen',DATA,ni,'HIST');
+  drawSection('cri',DATA,ni,'HIST');
   const ct={}; for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
   const aNow=DATA.sA[ni]?.val||DATA.sN[ni]?.val||1;
   drawDonut(ct,aNow);
@@ -1779,8 +1870,8 @@ function applyTheme(){
   drawEvol2(period2);
   drawStack(DATA);
   drawLiquidez(DATA,ni);
-  drawSection('pen',DATA,ni);
-  drawSection('cri',DATA,ni);
+  drawSection('pen',DATA,ni,'HIST');
+  drawSection('cri',DATA,ni,'HIST');
   const ct={}; for(const a of DATA.assets){ const v=a.series[ni]?.val||0; if(v) ct[a.cat]=(ct[a.cat]||0)+v; }
   const aNow=DATA.sA[ni]?.val||DATA.sN[ni]?.val||1;
   drawDonut(ct,aNow);
@@ -1822,6 +1913,10 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(statusEl){ statusEl.textContent = '✗ Error al actualizar · reintenta'; statusEl.style.color = 'var(--red)'; }
     });
   });
+
+  // Section period selectors (Pensiones, Cripto)
+  initSectionPeriodBtns('pen', DATA, latestIdx(DATA?.sN||[]));
+  initSectionPeriodBtns('cri', DATA, latestIdx(DATA?.sN||[]));
 
   // Drive data refresh
   $('btn-refresh-data').addEventListener('click', ()=>{
@@ -1910,12 +2005,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     b.addEventListener('click',()=>{
       document.querySelectorAll('.pbtn[data-spark-p]').forEach(x=>x.classList.remove('active'));
       b.classList.add('active');
-      const map = {'1M':1,'3M':3,'6M':6,'12M':12,'HIST':'HIST'};
+      const map = {'1M':1,'3M':3,'6M':6,'12M':12,'9M':9,'YTD':'YTD','HIST':'HIST'};
       sparkPeriodMonths = map[b.dataset.sparkP];
       const labels = {
         '1M':'último mes','3M':'últimos 3 meses',
-        '6M':'últimos 6 meses','12M':'últimos 12 meses',
-        'HIST':'histórico desde inicio'
+        '6M':'últimos 6 meses','9M':'últimos 9 meses','12M':'últimos 12 meses',
+        'YTD':'año natural (YTD)','HIST':'desde inicio'
       };
       $('spark-title').textContent = 'Rentabilidad por categoría — ' + labels[b.dataset.sparkP];
       if(DATA){ const ni=latestIdx(DATA.sN); drawSparksByMode(DATA,ni,sparkPeriodMonths); }
